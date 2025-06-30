@@ -44,13 +44,34 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
         messages += text
         messages += ""
 
+        Log.d(tag, "Sending message: '$text'")
+
         viewModelScope.launch {
-            llamaAndroid.send(text)
-                .catch {
-                    Log.e(tag, "send() failed", it)
-                    messages += it.message!!
+            try {
+                var tokenCount = 0
+                // Try with chat formatting first, then without if that fails
+                val formatChat = true
+                Log.d(tag, "Attempting with chat formatting: $formatChat")
+
+                llamaAndroid.send(text, formatChat)
+                    .catch {
+                        Log.e(tag, "send() failed", it)
+                        messages += "Error: ${it.message}"
+                    }
+                    .collect { token ->
+                        tokenCount++
+                        Log.d(tag, "Received token $tokenCount: '$token'")
+                        messages = messages.dropLast(1) + (messages.last() + token)
+                    }
+                Log.d(tag, "Text generation completed. Total tokens received: $tokenCount")
+
+                if (tokenCount == 0) {
+                    messages += "No response generated. Try a different prompt or check logs."
                 }
-                .collect { messages = messages.dropLast(1) + (messages.last() + it) }
+            } catch (e: Exception) {
+                Log.e(tag, "Exception in send()", e)
+                messages += "Exception: ${e.message}"
+            }
         }
     }
 

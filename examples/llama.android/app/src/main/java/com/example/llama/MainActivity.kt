@@ -1,16 +1,21 @@
 package com.example.llama
 
+import android.Manifest
 import android.app.ActivityManager
 import android.app.DownloadManager
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
 import android.os.StrictMode.VmPolicy
 import android.text.format.Formatter
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,8 +32,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.example.llama.ui.theme.LlamaAndroidTheme
 import java.io.File
@@ -46,10 +56,57 @@ class MainActivity(
 
     private val viewModel: MainViewModel by viewModels()
 
+    // Permission request launcher
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            viewModel.log("Storage permissions granted")
+        } else {
+            viewModel.log("Storage permissions denied - downloads may fail")
+        }
+    }
+
     // Get a MemoryInfo object for the device's current memory status.
     private fun availableMemory(): ActivityManager.MemoryInfo {
         return ActivityManager.MemoryInfo().also { memoryInfo ->
             activityManager.getMemoryInfo(memoryInfo)
+        }
+    }
+
+    private fun getRequiredPermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+ uses granular media permissions
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.READ_MEDIA_AUDIO
+            )
+        } else {
+            // Android 12 and below use broad storage permissions
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+        }
+    }
+
+    private fun hasStoragePermissions(): Boolean {
+        return getRequiredPermissions().all { permission ->
+            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun requestStoragePermissions() {
+        val permissions = getRequiredPermissions()
+        val missingPermissions = permissions.filter { permission ->
+            ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missingPermissions.isNotEmpty()) {
+            Log.d(tag, "Requesting permissions: ${missingPermissions.joinToString()}")
+            requestPermissionLauncher.launch(missingPermissions.toTypedArray())
         }
     }
 
@@ -68,7 +125,16 @@ class MainActivity(
         viewModel.log("Current memory: $free / $total")
         viewModel.log("Downloads directory: ${getExternalFilesDir(null)}")
 
+        // Check and request storage permissions
+        if (!hasStoragePermissions()) {
+            viewModel.log("Storage permissions not granted, requesting...")
+            requestStoragePermissions()
+        } else {
+            viewModel.log("Storage permissions already granted")
+        }
+
         val extFilesDir = getExternalFilesDir(null)
+        Log.i("Storage", "extFilesDir: $extFilesDir")
 
         val models = listOf(
             Downloadable(
@@ -86,6 +152,11 @@ class MainActivity(
                 Uri.parse("https://huggingface.co/TheBloke/phi-2-dpo-GGUF/resolve/main/phi-2-dpo.Q3_K_M.gguf?download=true"),
                 File(extFilesDir, "phi-2-dpo.Q3_K_M.gguf")
             ),
+            Downloadable(
+                "Wizard Coder",
+                Uri.parse("https://huggingface.co/jacobcarajo/WizardCoder-33B-V1.1-Q5_K_M-GGUF/resolve/main/wizardcoder-33b-v1.1-q5_k_m.gguf?download=true"),
+                File(extFilesDir, "wizardcoder-15b.gguf")
+            )
         )
 
         setContent {
@@ -100,6 +171,8 @@ class MainActivity(
                         clipboardManager,
                         downloadManager,
                         models,
+                        ::hasStoragePermissions,
+                        ::requestStoragePermissions
                     )
                 }
 
@@ -113,10 +186,29 @@ fun MainCompose(
     viewModel: MainViewModel,
     clipboard: ClipboardManager,
     dm: DownloadManager,
-    models: List<Downloadable>
+    models: List<Downloadable>,
+    hasStoragePermissions: () -> Boolean,
+    requestStoragePermissions: () -> Unit
 ) {
     Column {
         val scrollState = rememberLazyListState()
+
+        // Check if user is near the bottom (within last 2 items)
+        val isNearBottom = remember {
+            derivedStateOf {
+                val lastVisibleIndex = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                lastVisibleIndex >= (viewModel.messages.size - 3).coerceAtLeast(0)
+            }
+        }
+
+        // Auto-scroll to bottom only when new messages are added AND user is near bottom
+        LaunchedEffect(viewModel.messages.size) {
+            if (viewModel.messages.isNotEmpty() && isNearBottom.value) {
+                // Small delay to ensure the new item is laid out
+                delay(50)
+                scrollState.animateScrollToItem(viewModel.messages.size - 1)
+            }
+        }
 
         Box(modifier = Modifier.weight(1f)) {
             LazyColumn(state = scrollState) {
@@ -147,7 +239,13 @@ fun MainCompose(
 
         Column {
             for (model in models) {
-                Downloadable.Button(viewModel, dm, model)
+                Downloadable.Button(
+                    viewModel,
+                    dm,
+                    model,
+                    hasStoragePermissions,
+                    requestStoragePermissions
+                )
             }
         }
     }

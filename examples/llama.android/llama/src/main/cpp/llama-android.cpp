@@ -417,7 +417,16 @@ Java_android_llama_cpp_LLamaAndroid_completion_1loop(
     const auto new_token_id = llama_sampler_sample(sampler, context, -1);
 
     const auto n_cur = env->CallIntMethod(intvar_ncur, la_int_var_value);
-    if (llama_vocab_is_eog(vocab, new_token_id) || n_cur == n_len) {
+
+    LOGi("Sampled token_id: %d, n_cur: %d, n_len: %d", new_token_id, n_cur, n_len);
+
+    if (llama_vocab_is_eog(vocab, new_token_id)) {
+        LOGi("Generated EOG token, ending generation");
+        return nullptr;
+    }
+
+    if (n_cur == n_len) {
+        LOGi("Reached maximum length, ending generation");
         return nullptr;
     }
 
