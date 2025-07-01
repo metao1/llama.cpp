@@ -5,7 +5,12 @@ import android.net.Uri
 import android.os.StatFs
 import android.util.Log
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,7 +19,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.database.getLongOrNull
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -319,15 +326,18 @@ data class Downloadable(val name: String, val source: Uri, val destination: File
 
                 // Add delete button for downloaded models
                 if (status is Downloaded) {
-                    Button(
+                    IconButton(
                         onClick = {
                             item.destination.delete()
                             status = Ready
                             viewModel.log("Deleted ${item.name}")
                         },
-                        enabled = true
+                        modifier = Modifier.padding(8.dp)
                     ) {
-                        Text("Delete")
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete"
+                        )
                     }
                 }
             }
