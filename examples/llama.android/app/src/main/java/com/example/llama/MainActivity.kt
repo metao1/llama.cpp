@@ -5,6 +5,7 @@ import android.app.ActivityManager
 import android.app.DownloadManager
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -21,10 +22,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,7 +33,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,6 +48,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
+import androidx.core.net.toUri
 import com.example.llama.ui.theme.LlamaAndroidTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -195,6 +195,7 @@ class MainActivity(
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MainCompose(
+                        context = this,
                         viewModel,
                         clipboardManager,
                         downloadManager,
@@ -284,15 +285,25 @@ class MainActivity(
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MainCompose(
+        context: Context,
         viewModel: MainViewModel,
         clipboard: ClipboardManager,
         dm: DownloadManager,
-        models: List<Downloadable>,
+        initialModels: List<Downloadable>,
         hasStoragePermissions: () -> Boolean,
         requestStoragePermissions: () -> Unit
     ) {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
+
+        // Use mutableStateList for dynamic updates
+        val models = remember { mutableStateListOf<Downloadable>().apply { addAll(initialModels) } }
+
+        // Dialog states
+        val showDialog = remember { mutableStateOf(false) }
+        val newName = remember { mutableStateOf("") }
+        val newUrl = remember { mutableStateOf("") }
+        val errorText = remember { mutableStateOf<String?>(null) }
 
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -309,33 +320,45 @@ class MainActivity(
                         modifier = Modifier
                             .width(100.dp)
                             .padding(bottom = 8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        elevation = ButtonDefaults.buttonElevation(0.dp)
-                    ) {
-                        Text("Bench")
-                    }
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) { Text("Bench") }
+
                     Button(
                         onClick = { viewModel.clear() },
                         modifier = Modifier
                             .width(100.dp)
                             .padding(bottom = 8.dp)
-                    ) {
-                        Text("Clear")
-                    }
+                    ) { Text("Clear") }
+
                     Button(
                         onClick = {
                             clipboard.setPrimaryClip(
-                                ClipData.newPlainText("", viewModel.messages.joinToString("\n"))
+                                ClipData.newPlainText(
+                                    "",
+                                    viewModel.messages.joinToString("\n")
+                                )
                             )
                         },
                         modifier = Modifier
                             .width(100.dp)
                             .padding(bottom = 8.dp)
+                    ) { Text("Copy") }
+
+                    // Add Model Button
+                    Button(
+                        onClick = {
+                            newName.value = ""
+                            newUrl.value = ""
+                            errorText.value = null
+                            showDialog.value = true
+                        },
+                        modifier = Modifier
+                            .width(100.dp)
+                            .padding(bottom = 16.dp)
                     ) {
-                        Text("Copy")
+                        Text("Add Model")
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
                     Text("Models", style = MaterialTheme.typography.titleSmall)
 
                     Column {
@@ -352,7 +375,6 @@ class MainActivity(
                 }
             }
         ) {
-            // Main screen content
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -372,6 +394,68 @@ class MainActivity(
                 ) {
                     Chat(viewModel = viewModel)
                 }
+            }
+
+            if (showDialog.value) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showDialog.value = false },
+                    title = { Text("Add Model") },
+                    text = {
+                        Column {
+                            TextField(
+                                value = newName.value,
+                                onValueChange = { newName.value = it },
+                                label = { Text("Model Name") },
+                                singleLine = true,
+                            )
+                            TextField(
+                                value = newUrl.value,
+                                onValueChange = { newUrl.value = it },
+                                label = { Text("Model URL") },
+                                singleLine = true,
+                            )
+                            if (errorText.value != null) {
+                                Text(
+                                    text = errorText.value ?: "",
+                                    color = Color.Red,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            // Validate inputs
+                            if (newName.value.isBlank()) {
+                                errorText.value = "Name cannot be empty"
+                                return@Button
+                            }
+                            if (newUrl.value.isBlank() || !newUrl.value.startsWith("http")) {
+                                errorText.value = "Invalid URL"
+                                return@Button
+                            }
+
+                            // Add model
+                            val fileName = newUrl.value.substringAfterLast('/').substringBefore('?')
+                            val file = File(context.getExternalFilesDir(null), fileName)
+                            models.add(
+                                Downloadable(
+                                    newName.value,
+                                    newUrl.value.toUri(),
+                                    file
+                                )
+                            )
+                            showDialog.value = false
+                        }) {
+                            Text("Add")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showDialog.value = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
         }
     }
