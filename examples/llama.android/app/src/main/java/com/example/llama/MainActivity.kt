@@ -17,30 +17,35 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import kotlinx.coroutines.delay
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.example.llama.ui.theme.LlamaAndroidTheme
+import kotlinx.coroutines.delay
 import java.io.File
 
 class MainActivity(
@@ -154,7 +159,7 @@ class MainActivity(
             ),
             Downloadable(
                 "Wizard Coder",
-                Uri.parse("https://huggingface.co/TheBloke/WizardCoder-Python-34B-V1.0-GGUF/resolve/main/wizardcoder-python-34b-v1.0.Q2_K.gguf?download=true"),
+                Uri.parse("https://huggingface.co/bartowski/Fireball-Meta-Llama-3.1-8B-Instruct-Agent-0.003-128K-code-ds-auto-GGUF/resolve/main/Fireball-Meta-Llama-3.1-8B-Instruct-Agent-0.003-128K-code-ds-auto-Q6_K_L.gguf?download=true"),
                 File(extFilesDir, "wizardcoder-15b.gguf")
             ),
             Downloadable(
@@ -185,7 +190,76 @@ class MainActivity(
             }
         }
     }
-}
+
+    @Composable
+    fun Chat(viewModel: MainViewModel) {
+        val messages = viewModel.messages  // directly read list; Compose tracks changes
+        val input = remember { mutableStateOf("") }
+        val scrollState = rememberLazyListState()
+
+        val isNearBottom = remember {
+            derivedStateOf {
+                val lastVisible = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                lastVisible >= messages.lastIndex - 1  // allow small tolerance
+            }
+        }
+
+        Column(Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                state = scrollState,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(messages) { msg ->
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFE0E0E0),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = msg,
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            TextField(
+                value = input.value,
+                onValueChange = {
+                    input.value = it
+                    viewModel.updateMessage(it)
+                },
+                placeholder = { Text("Type a message...") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            )
+
+            Button(
+                onClick = {
+                    viewModel.send()
+                    input.value = ""
+                },
+                modifier = Modifier.padding(8.dp)
+            ) {
+                Text("Send")
+            }
+        }
+
+        // Scroll to bottom whenever messages list changes and we're near bottom
+        LaunchedEffect(messages) {
+            if (messages.isNotEmpty() && isNearBottom.value) {
+                delay(50)
+                scrollState.animateScrollToItem(messages.lastIndex)
+            }
+        }
+
+    }
 
 @Composable
 fun MainCompose(
@@ -196,54 +270,36 @@ fun MainCompose(
     hasStoragePermissions: () -> Boolean,
     requestStoragePermissions: () -> Unit
 ) {
-    Column {
-        val scrollState = rememberLazyListState()
-
-        // Check if user is near the bottom (within last 2 items)
-        val isNearBottom = remember {
-            derivedStateOf {
-                val lastVisibleIndex = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                lastVisibleIndex >= (viewModel.messages.size - 3).coerceAtLeast(0)
-            }
-        }
-
-        // Auto-scroll to bottom only when new messages are added AND user is near bottom
-        LaunchedEffect(viewModel.messages.size) {
-            if (viewModel.messages.isNotEmpty() && isNearBottom.value) {
-                // Small delay to ensure the new item is laid out
-                delay(50)
-                scrollState.animateScrollToItem(viewModel.messages.size - 1)
-            }
-        }
-
+    Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
-            LazyColumn(state = scrollState) {
-                items(viewModel.messages) {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodyLarge.copy(color = LocalContentColor.current),
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
-        }
-        OutlinedTextField(
-            value = viewModel.message,
-            onValueChange = { viewModel.updateMessage(it) },
-            label = { Text("Message") },
-        )
-        Row {
-            Button({ viewModel.send() }) { Text("Send") }
-            Button({ viewModel.bench(8, 4, 1) }) { Text("Bench") }
-            Button({ viewModel.clear() }) { Text("Clear") }
-            Button({
-                viewModel.messages.joinToString("\n").let {
-                    clipboard.setPrimaryClip(ClipData.newPlainText("", it))
-                }
-            }) { Text("Copy") }
+            Chat(
+                viewModel = viewModel
+            )
         }
 
-        Column {
+        Row(modifier = Modifier.padding(horizontal = 8.dp)) {
+            Button(
+                onClick = { viewModel.bench(8, 4, 1) },
+                modifier = Modifier.padding(end = 4.dp)
+            ) {
+                Text("Bench")
+                }
+            Button(onClick = { viewModel.clear() }, modifier = Modifier.padding(end = 4.dp)) {
+                Text("Clear")
+            }
+            Button(onClick = {
+                clipboard.setPrimaryClip(
+                    ClipData.newPlainText(
+                        "",
+                        viewModel.messages.joinToString("\n")
+                    )
+                )
+            }) {
+                Text("Copy")
+            }
+        }
+
+        Column(modifier = Modifier.padding(8.dp)) {
             for (model in models) {
                 Downloadable.Button(
                     viewModel,
@@ -253,6 +309,8 @@ fun MainCompose(
                     requestStoragePermissions
                 )
             }
+            }
         }
     }
 }
+

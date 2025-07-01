@@ -7,6 +7,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
@@ -21,8 +24,7 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
     var messages by mutableStateOf(listOf("Initializing..."))
         private set
 
-    var message by mutableStateOf("")
-        private set
+    private var message by mutableStateOf("")
 
     override fun onCleared() {
         super.onCleared()
@@ -61,9 +63,7 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
                     .collect { token ->
                         tokenCount++
                         Log.d(tag, "Received token $tokenCount: '$token'")
-                        if (messages.isNotEmpty()){
-                            messages = messages.dropLast(1) + (messages.last() + token)
-                        }
+                        messages = messages.dropLast(1) + (messages.last() + token)
                     }
                 Log.d(tag, "Text generation completed. Total tokens received: $tokenCount")
 

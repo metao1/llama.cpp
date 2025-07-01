@@ -44,10 +44,6 @@ data class Downloadable(val name: String, val source: Uri, val destination: File
                 return false
             }
 
-            return isValidGfufFile(file, fileSize)
-        }
-
-        private fun isValidGfufFile(file: File, fileSize: Long): Boolean {
             try {
                 FileInputStream(file).use { fis ->
                     val magic = ByteArray(4)
