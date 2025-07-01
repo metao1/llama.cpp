@@ -154,7 +154,7 @@ class MainActivity(
             ),
             Downloadable(
                 "Wizard Coder",
-                Uri.parse("https://huggingface.co/jacobcarajo/WizardCoder-33B-V1.1-Q5_K_M-GGUF/resolve/main/wizardcoder-33b-v1.1-q5_k_m.gguf?download=true"),
+                Uri.parse("https://huggingface.co/TheBloke/WizardCoder-Python-34B-V1.0-GGUF/resolve/main/wizardcoder-python-34b-v1.0.Q2_K.gguf?download=true"),
                 File(extFilesDir, "wizardcoder-15b.gguf")
             )
         )

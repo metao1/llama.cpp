@@ -2,6 +2,7 @@ package com.example.llama
 
 import android.app.DownloadManager
 import android.net.Uri
+import android.os.StatFs
 import android.util.Log
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Button
@@ -13,13 +14,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.database.getLongOrNull
-import androidx.core.net.toUri
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileInputStream
-import android.os.StatFs
 
 data class Downloadable(val name: String, val source: Uri, val destination: File) {
     companion object {
@@ -100,6 +100,7 @@ data class Downloadable(val name: String, val source: Uri, val destination: File
             hasStoragePermissions: () -> Boolean,
             requestStoragePermissions: () -> Unit
         ) {
+            val context = LocalContext.current
             var status: State by remember {
                 mutableStateOf(
                     if (item.destination.exists()) {
@@ -264,16 +265,23 @@ data class Downloadable(val name: String, val source: Uri, val destination: File
 
                         item.destination.delete()
 
-                        val request = DownloadManager.Request(
-                            "https://google.com".toUri()
-                        ).apply {
+                        // Ensure parent directory exists
+                        item.destination.parentFile?.mkdirs()
+
+                        val request = DownloadManager.Request(item.source).apply {
                             setTitle("Downloading model")
-                            .setDescription("Downloading model: ${item.name}")
-                            .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI)
-                            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-                            .setAllowedOverMetered(true)
-                            .setAllowedOverRoaming(true)
-                            setDestinationUri(item.destination.toUri())
+                            setDescription("Downloading model: ${item.name}")
+                            setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI)
+                            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+                            setAllowedOverMetered(true)
+                            setAllowedOverRoaming(true)
+
+                            // Use setDestinationInExternalFilesDir which is more reliable
+                            setDestinationInExternalFilesDir(
+                                context,
+                                null,
+                                item.destination.name
+                            )
                         }
 
                         viewModel.log("Saving ${item.name} to ${item.destination.path}")
