@@ -156,7 +156,13 @@ class MainActivity(
                 "Wizard Coder",
                 Uri.parse("https://huggingface.co/TheBloke/WizardCoder-Python-34B-V1.0-GGUF/resolve/main/wizardcoder-python-34b-v1.0.Q2_K.gguf?download=true"),
                 File(extFilesDir, "wizardcoder-15b.gguf")
+            ),
+            Downloadable(
+              "3D Animation diffiusion",
+                Uri.parse("https://huggingface.co/codegood/gemma-2b-it-Q4_K_M-GGUF/resolve/main/gemma-2b-it.Q4_K_M.gguf?download=true"),
+                File(extFilesDir, "3d-animation.gguf")
             )
+
         )
 
         setContent {

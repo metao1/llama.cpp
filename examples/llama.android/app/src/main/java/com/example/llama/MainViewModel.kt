@@ -61,7 +61,9 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
                     .collect { token ->
                         tokenCount++
                         Log.d(tag, "Received token $tokenCount: '$token'")
-                        messages = messages.dropLast(1) + (messages.last() + token)
+                        if (messages.isNotEmpty()){
+                            messages = messages.dropLast(1) + (messages.last() + token)
+                        }
                     }
                 Log.d(tag, "Text generation completed. Total tokens received: $tokenCount")
 

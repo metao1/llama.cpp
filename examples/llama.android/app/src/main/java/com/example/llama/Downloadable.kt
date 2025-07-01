@@ -44,6 +44,10 @@ data class Downloadable(val name: String, val source: Uri, val destination: File
                 return false
             }
 
+            return isValidGfufFile(file, fileSize)
+        }
+
+        private fun isValidGfufFile(file: File, fileSize: Long): Boolean {
             try {
                 FileInputStream(file).use { fis ->
                     val magic = ByteArray(4)
@@ -57,9 +61,15 @@ data class Downloadable(val name: String, val source: Uri, val destination: File
                     val isValid = magic.contentEquals(byteArrayOf(0x47, 0x47, 0x55, 0x46))
 
                     if (isValid) {
-                        Log.d(tag, "GGUF file validation passed: ${file.path} (${formatBytes(fileSize)})")
+                        Log.d(
+                            tag,
+                            "GGUF file validation passed: ${file.path} (${formatBytes(fileSize)})"
+                        )
                     } else {
-                        Log.w(tag, "Invalid GGUF magic bytes: ${magic.joinToString(" ") { "%02x".format(it) }}")
+                        Log.w(
+                            tag,
+                            "Invalid GGUF magic bytes: ${magic.joinToString(" ") { "%02x".format(it) }}"
+                        )
                     }
 
                     return isValid
