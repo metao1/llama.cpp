@@ -38,7 +38,10 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
     fun send() {
         val text = message
         message = ""
-
+        if( text.isBlank()) {
+            Log.w(tag, "send() called with empty text")
+            return
+        }
         // Add to messages console.
         messages += text
         messages += ""
@@ -51,8 +54,11 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
                 // Try with chat formatting first, then without if that fails
                 val formatChat = true
                 Log.d(tag, "Attempting with chat formatting: $formatChat")
-
-                llamaAndroid.send(text, formatChat)
+                if (text.isEmpty()) {
+                    Log.w(tag, "send() called with empty text")
+                    return@launch
+                }
+                llamaAndroid.send(wrapMessage(text), formatChat)
                     .catch {
                         Log.e(tag, "send() failed", it)
                         messages += "Error: ${it.message}"
@@ -60,6 +66,9 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
                     .collect { token ->
                         tokenCount++
                         Log.d(tag, "Received token $tokenCount: '$token'")
+                        if (messages.isEmpty()) {
+                            return@collect
+                        }
                         messages = messages.dropLast(1) + (messages.last() + token)
                     }
                 Log.d(tag, "Text generation completed. Total tokens received: $tokenCount")
@@ -71,7 +80,33 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
                 Log.e(tag, "Exception in send()", e)
                 messages += "Exception: ${e.message}"
             }
+            //messages = unwrapMessage(message)
         }
+    }
+
+    private fun unwrapMessage(message: String): List<String> {
+        if (message.isBlank()) {
+            return listOf()
+        }
+        return message.split("\\s\n")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .map { it.replace("<start_of_turn>model", "").trim() }
+            .map { it.replace("<start_of_turn>user", "").trim() }
+            .map { it.replace("<end_of_turn>", "").trim() }
+            .filter { it.isNotEmpty() }
+    }
+
+    private fun wrapMessage(message: String): String {
+        if (message.isBlank()) {
+            return message
+        }
+        return """
+        <start_of_turn>user
+        $message
+        <end_of_turn>
+        <start_of_turn>model
+        """.trimIndent()
     }
 
     fun bench(pp: Int, tg: Int, pl: Int, nr: Int = 1) {
