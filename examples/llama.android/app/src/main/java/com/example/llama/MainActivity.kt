@@ -24,12 +24,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -50,16 +53,20 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
+import kotlin.math.min
 import androidx.core.net.toUri
 import com.example.llama.ui.theme.LlamaAndroidTheme
 import kotlinx.coroutines.delay
@@ -216,6 +223,10 @@ class MainActivity(
         val messages = viewModel.messages  // directly read list; Compose tracks changes
         val input = remember { mutableStateOf("") }
         val scrollState = rememberLazyListState()
+        val configuration = LocalConfiguration.current
+
+        // Calculate max width to maintain consistent proportions (max 600dp)
+        val maxWidth = min(configuration.screenWidthDp.dp.value, 600f).dp
 
         val isNearBottom = remember {
             derivedStateOf {
@@ -224,7 +235,15 @@ class MainActivity(
             }
         }
 
-        Column(Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = maxWidth)
+                    .fillMaxHeight()
+            ) {
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
@@ -281,19 +300,114 @@ class MainActivity(
                     Text("Send")
                 }
             }
-        }
+            }
 
-        // Scroll to bottom whenever messages list changes and we're near bottom
-        LaunchedEffect(messages) {
-            if (messages.isNotEmpty() && isNearBottom.value) {
-                delay(50)
-                scrollState.animateScrollToItem(messages.lastIndex)
+            // Scroll to bottom whenever messages list changes and we're near bottom
+            LaunchedEffect(messages) {
+                if (messages.isNotEmpty() && isNearBottom.value) {
+                    delay(50)
+                    scrollState.animateScrollToItem(messages.lastIndex)
+                }
             }
         }
 
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun DrawerContent(
+        models: MutableList<Downloadable>,
+        viewModel: MainViewModel,
+        dm: DownloadManager,
+        hasStoragePermissions: () -> Boolean,
+        requestStoragePermissions: () -> Unit,
+        showDialog: MutableState<Boolean>,
+        newName: MutableState<String>,
+        newUrl: MutableState<String>,
+        errorText: MutableState<String?>,
+        clipboard: ClipboardManager
+    ) {
+        val configuration = LocalConfiguration.current
+        // Limit drawer width to max 320dp or 40% of screen width, whichever is smaller
+        val maxWidth = min(320f, configuration.screenWidthDp * 0.4f).dp
+
+        Column(
+            modifier = Modifier
+                .widthIn(max = maxWidth)
+                .fillMaxHeight()
+                .padding(16.dp)
+        ) {
+            Text(
+                "Tools",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp),
+                color = Color.Black
+            )
+
+            Button(
+                onClick = { viewModel.bench(8, 4, 1) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                Text("Benchmark")
+            }
+
+            Button(
+                onClick = { viewModel.clear() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                Text("Clear")
+            }
+
+            Button(
+                onClick = {
+                    clipboard.setPrimaryClip(
+                        ClipData.newPlainText(
+                            "",
+                            viewModel.messages.joinToString("\n")
+                        )
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                Text("Copy")
+            }
+
+            Button(
+                onClick = {
+                    newName.value = ""
+                    newUrl.value = ""
+                    errorText.value = null
+                    showDialog.value = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Text("Add Model")
+            }
+
+            Text("Models", style = MaterialTheme.typography.titleSmall, color = Color.Black)
+
+            Column {
+                models.forEach { model ->
+                    Downloadable.Button(
+                        viewModel,
+                        dm,
+                        model,
+                        hasStoragePermissions,
+                        requestStoragePermissions
+                    )
+                }
+            }
+        }
+    }
+
     @Composable
     fun MainCompose(
         context: Context,
@@ -306,6 +420,7 @@ class MainActivity(
     ) {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
+        val configuration = LocalConfiguration.current
 
         // Use mutableStateList for dynamic updates
         val models = remember { mutableStateListOf<Downloadable>().apply { addAll(initialModels) } }
@@ -318,77 +433,27 @@ class MainActivity(
 
         ModalNavigationDrawer(
             drawerState = drawerState,
+            gesturesEnabled = true,
+            modifier = Modifier.fillMaxSize(),
             drawerContent = {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .width(320.dp)
+                        .fillMaxHeight(),
                     color = Color.White
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Tools",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        color = Color.Black
+                    DrawerContent(
+                        models = models,
+                        viewModel = viewModel,
+                        dm = dm,
+                        hasStoragePermissions = hasStoragePermissions,
+                        requestStoragePermissions = requestStoragePermissions,
+                        showDialog = showDialog,
+                        newName = newName,
+                        newUrl = newUrl,
+                        errorText = errorText,
+                        clipboard = clipboard
                     )
-
-                    Button(
-                        onClick = { viewModel.bench(8, 4, 1) },
-                        modifier = Modifier
-                            .width(100.dp)
-                            .padding(bottom = 8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    ) { Text("Bench") }
-
-                    Button(
-                        onClick = { viewModel.clear() },
-                        modifier = Modifier
-                            .width(100.dp)
-                            .padding(bottom = 8.dp)
-                    ) { Text("Clear") }
-
-                    Button(
-                        onClick = {
-                            clipboard.setPrimaryClip(
-                                ClipData.newPlainText(
-                                    "",
-                                    viewModel.messages.joinToString("\n")
-                                )
-                            )
-                        },
-                        modifier = Modifier
-                            .width(100.dp)
-                            .padding(bottom = 8.dp)
-                    ) { Text("Copy") }
-
-                    // Add Model Button
-                    Button(
-                        onClick = {
-                            newName.value = ""
-                            newUrl.value = ""
-                            errorText.value = null
-                            showDialog.value = true
-                        },
-                        modifier = Modifier
-                            .width(100.dp)
-                            .padding(bottom = 16.dp)
-                    ) {
-                        Text("Add Model")
-                    }
-
-                    Text("Models", style = MaterialTheme.typography.titleSmall, color = Color.Black)
-
-                    Column {
-                        models.forEach { model ->
-                            Downloadable.Button(
-                                viewModel,
-                                dm,
-                                model,
-                                hasStoragePermissions,
-                                requestStoragePermissions
-                            )
-                        }
-                    }
-                    }
                 }
             }
         ) {
@@ -404,7 +469,8 @@ class MainActivity(
                 }
             }
 
-            if (showDialog.value) {
+        // Dialog for adding models
+        if (showDialog.value) {
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = { showDialog.value = false },
                     title = { Text("Add Model") },
