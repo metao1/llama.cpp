@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.database.getLongOrNull
@@ -309,7 +311,16 @@ data class Downloadable(val name: String, val source: Uri, val destination: File
             }
 
             Row {
-                Button(onClick = { onClick() }, enabled = status !is Downloading) {
+                Button(
+                    onClick = { onClick() },
+                    enabled = status !is Downloading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Black,
+                        contentColor = Color.White,
+                        disabledContainerColor = Color.Gray,
+                        disabledContentColor = Color.White
+                    )
+                ) {
                     when (status) {
                         is Downloading -> Text(text = "Downloading ${(progress * 100).toInt()}%")
                         is Downloaded -> Text("Load ${item.name}")

@@ -191,10 +191,10 @@ class MainActivity(
 
         setContent {
             LlamaAndroidTheme {
-                // A surface container using the 'background' color from the theme
+                // A surface container with white background
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = Color.White
                 ) {
                     MainCompose(
                         context = this,
@@ -236,13 +236,14 @@ class MainActivity(
                 items(messages) { msg ->
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFE0E0E0),
+                        color = Color.White,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
                             text = msg,
                             modifier = Modifier.padding(12.dp),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Black
                         )
                     }
                 }
@@ -318,11 +319,16 @@ class MainActivity(
         ModalNavigationDrawer(
             drawerState = drawerState,
             drawerContent = {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.White
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         "Tools",
                         style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        color = Color.Black
                     )
 
                     Button(
@@ -369,7 +375,7 @@ class MainActivity(
                         Text("Add Model")
                     }
 
-                    Text("Models", style = MaterialTheme.typography.titleSmall)
+                    Text("Models", style = MaterialTheme.typography.titleSmall, color = Color.Black)
 
                     Column {
                         models.forEach { model ->
@@ -382,10 +388,12 @@ class MainActivity(
                             )
                         }
                     }
+                    }
                 }
             }
         ) {
             Scaffold(
+                containerColor = Color.White
             ) { padding ->
                 Box(
                     modifier = Modifier
