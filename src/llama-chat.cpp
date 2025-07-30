@@ -356,10 +356,7 @@ int32_t llm_chat_apply_template(
                 ss << system_prompt << "\n\n";
                 system_prompt = "";
             }
-            ss << trim(message->content) << "<end_of_turn>\n";
-        }
-        if (add_ass) {
-            ss << "<start_of_turn>model\n";
+            ss << trim(message->content) << "\n";
         }
     } else if (tmpl == LLM_CHAT_TEMPLATE_ORION) {
         // OrionStarAI/Orion-14B-Chat
@@ -386,10 +383,10 @@ int32_t llm_chat_apply_template(
         for (auto message : chat) {
             std::string role(message->role);
             if (role == "system") {
-                ss << message->content << "<|end_of_turn|>";
+                ss << message->content;
             } else {
                 role[0] = toupper(role[0]);
-                ss << "GPT4 Correct " << role << ": " << message->content << "<|end_of_turn|>";
+                ss << "GPT4 Correct " << role << ": " << message->content;
             }
         }
         if (add_ass) {
@@ -435,11 +432,11 @@ int32_t llm_chat_apply_template(
         for (auto message : chat) {
             std::string role(message->role);
             if (role == "system") {
-                ss << "<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>" << trim(message->content) << "<|END_OF_TURN_TOKEN|>";
+                ss << "<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>" << trim(message->content);
             } else if (role == "user") {
-                ss << "<|START_OF_TURN_TOKEN|><|USER_TOKEN|>" << trim(message->content) << "<|END_OF_TURN_TOKEN|>";
+                ss << "<|START_OF_TURN_TOKEN|><|USER_TOKEN|>" << trim(message->content);
             } else if (role == "assistant") {
-                ss << "<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>" << trim(message->content) << "<|END_OF_TURN_TOKEN|>";
+                ss << "<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>" << trim(message->content);
             }
         }
         if (add_ass) {
