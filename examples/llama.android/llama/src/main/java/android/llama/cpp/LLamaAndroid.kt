@@ -36,7 +36,7 @@ class LLamaAndroid {
         }
     }.asCoroutineDispatcher()
 
-    private val nlen: Int = 1024
+    private val nlen: Int = 2000
 
     private external fun log_to_android()
     private external fun load_model(filename: String): Long
@@ -117,6 +117,7 @@ class LLamaAndroid {
     }
 
     fun send(message: String, formatChat: Boolean = false): Flow<String> = flow {
+        val sb = StringBuffer()
         when (val state = threadLocalState.get()) {
             is State.Loaded -> {
                 Log.d(tag, "Starting text generation for message: '$message'")
@@ -127,13 +128,19 @@ class LLamaAndroid {
                 while (ncur.value <= nlen) {
                     val str = completion_loop(state.context, state.batch, state.sampler, nlen, ncur)
                     if (str == null) {
-                        Log.d(tag, "completion_loop returned null, breaking after $tokenCount tokens")
+                        Log.d(tag, "completion_loop returned null, breaking after ${0} tokens")
                         break
                     }
                     tokenCount++
                     Log.d(tag, "Generated token $tokenCount: '$str', ncur: ${ncur.value}")
+                    sb.append(str)
                     emit(str)
+                    if (sb.contains("<end_of_turn>\n")) {
+                       // kv_cache_clear(state.context)
+                        //break
+                    }
                 }
+
                 Log.d(tag, "Text generation completed. Total tokens: $tokenCount")
                 kv_cache_clear(state.context)
             }

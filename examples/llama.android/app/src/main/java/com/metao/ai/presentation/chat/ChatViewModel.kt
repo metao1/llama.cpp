@@ -76,13 +76,8 @@ class ChatViewModel(
         // Generate response with proper conversation context
         viewModelScope.launch {
             try {
-                // Build conversation history for context (last 6 messages for context)
-                val recentHistory = _uiState.value.messages.takeLast(6).map { message ->
-                    Pair(message.content, message.isFromUser)
-                }
-
                 // Create properly formatted prompt with start_of_turn tokens
-                val formattedPrompt = MessageFormatter.buildConversationPrompt(currentInput, recentHistory)
+                val formattedPrompt = MessageFormatter.buildConversationPrompt(currentInput)
 
                 generateTextUseCase(formattedPrompt, useChat = false).collect { state ->
                     when (state) {

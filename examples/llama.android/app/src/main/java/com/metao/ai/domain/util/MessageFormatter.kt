@@ -14,20 +14,9 @@ object MessageFormatter {
      * Builds a complete conversation context with proper formatting
      */
     fun buildConversationPrompt(
-        currentMessage: String,
-        conversationHistory: List<Pair<String, Boolean>> = emptyList()
+        currentMessage: String
     ): String {
         val prompt = StringBuilder()
-
-        // Add conversation history
-        conversationHistory.forEach { (content, isFromUser) ->
-            if (isFromUser) {
-                prompt.append("<start_of_turn>user\n$content<end_of_turn>\n")
-            } else {
-                prompt.append("<start_of_turn>model\n$content<end_of_turn>\n")
-            }
-        }
-
         // Add current message
         prompt.append("<start_of_turn>user\n$currentMessage<end_of_turn>\n")
         prompt.append("<start_of_turn>model\n")

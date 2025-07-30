@@ -1,10 +1,10 @@
 package com.metao.ai.data.repository
 
+import android.annotation.SuppressLint
 import android.app.DownloadManager
 import android.content.Context
 import android.llama.cpp.LLamaAndroid
 import android.util.Log
-import androidx.compose.material3.Text
 import androidx.core.database.getLongOrNull
 import androidx.core.net.toUri
 import com.metao.ai.domain.model.DownloadState
@@ -64,6 +64,7 @@ class ModelRepositoryImpl(
         }
     }
 
+    @SuppressLint("Range")
     override suspend fun downloadModel(modelInfo: ModelInfo): Flow<DownloadState> = flow {
         emit(DownloadState.Preparing)
 
@@ -186,12 +187,6 @@ class ModelRepositoryImpl(
                         // Extract clean content from accumulated response
                         val cleanResponse = MessageFormatter.extractResponse(accumulatedResponse)
                         Log.d(TAG, "Clean response: '${cleanResponse.take(50)}...'")
-
-
-                        if(cleanResponse.contains("user")) {
-                            emit(TextGenerationState.Completed)
-                            return@collect
-                        }
 
                         // Only emit new content that wasn't emitted before
                         if (cleanResponse.length > lastCleanLength) {
