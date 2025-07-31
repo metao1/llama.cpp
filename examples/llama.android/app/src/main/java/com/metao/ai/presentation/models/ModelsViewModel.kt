@@ -1,11 +1,14 @@
 package com.metao.ai.presentation.models
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import java.io.File
 import com.metao.ai.domain.manager.ModelStateManager
 import com.metao.ai.domain.model.DownloadState
 import com.metao.ai.domain.model.ModelInfo
 import com.metao.ai.domain.model.ModelLoadState
+import com.metao.ai.domain.usecase.AddCustomModelUseCase
 import com.metao.ai.domain.usecase.DownloadModelUseCase
 import com.metao.ai.domain.usecase.GetModelsUseCase
 import com.metao.ai.domain.usecase.LoadModelUseCase
@@ -19,6 +22,7 @@ import kotlinx.coroutines.withContext
 
 class ModelsViewModel(
     private val getModelsUseCase: GetModelsUseCase,
+    private val addCustomModelUseCase: AddCustomModelUseCase,
     private val downloadModelUseCase: DownloadModelUseCase,
     private val loadModelUseCase: LoadModelUseCase,
     private val modelStateManager: ModelStateManager
@@ -119,4 +123,39 @@ class ModelsViewModel(
     fun isModelLoaded(modelId: String): Boolean {
         return _uiState.value.loadedModelId == modelId
     }
+
+    fun addCustomModel(modelData: AddModelDialogData) {
+        viewModelScope.launch {
+            try {
+                // Create a custom model info
+                val customModel = ModelInfo(
+                    id = "custom_${System.currentTimeMillis()}",
+                    name = modelData.name,
+                    description = modelData.description,
+                    sourceUrl = Uri.parse(modelData.url),
+                    destinationFile = File("/storage/emulated/0/Android/data/com.metao.ai/files/models/${modelData.name.replace(" ", "_").lowercase()}.gguf"),
+                    sizeBytes = modelData.sizeBytes,
+                    isDownloaded = false
+                )
+
+                // Save to database (this will persist the model)
+                addCustomModelUseCase(customModel)
+
+                // Reload models from database to update UI
+                loadModels()
+
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(error = "Failed to add model: ${e.message}")
+                }
+            }
+        }
+    }
 }
+
+data class AddModelDialogData(
+    val name: String,
+    val description: String,
+    val url: String,
+    val sizeBytes: Long
+)

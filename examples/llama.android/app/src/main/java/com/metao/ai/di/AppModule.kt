@@ -3,9 +3,12 @@ package com.metao.ai.di
 import android.app.DownloadManager
 import android.content.Context
 import android.llama.cpp.LLamaAndroid
+import com.metao.ai.data.database.ModelDatabase
+import com.metao.ai.data.repository.ModelDatabaseRepository
 import com.metao.ai.data.repository.ModelRepositoryImpl
 import com.metao.ai.domain.repository.ModelRepository
 import com.metao.ai.domain.manager.ModelStateManager
+import com.metao.ai.domain.usecase.AddCustomModelUseCase
 import com.metao.ai.domain.usecase.ClearMessagesUseCase
 import com.metao.ai.domain.usecase.DownloadModelUseCase
 import com.metao.ai.domain.usecase.GenerateTextUseCase
@@ -31,17 +34,24 @@ val appModule = module {
         LLamaAndroid.instance()
     }
 
+    // Database
+    single { ModelDatabase.getDatabase(get()) }
+    single { get<ModelDatabase>().modelDao() }
+    single { ModelDatabaseRepository(get()) }
+
     // Repository
     single<ModelRepository> {
         ModelRepositoryImpl(
             context = get(),
             downloadManager = get(),
-            llamaAndroid = get()
+            llamaAndroid = get(),
+            databaseRepository = get()
         )
     }
 
     // Use Cases
     single { GetModelsUseCase(get()) }
+    single { AddCustomModelUseCase(get()) }
     single { DownloadModelUseCase(get()) }
     single { LoadModelUseCase(get()) }
     single { GenerateTextUseCase(get()) }
@@ -50,5 +60,5 @@ val appModule = module {
 
     // ViewModels
     viewModel { ChatViewModel(get(), get(), get(), get()) }
-    viewModel { ModelsViewModel(get(), get(), get(), get()) }
+    viewModel { ModelsViewModel(get(), get(), get(), get(), get()) }
 }

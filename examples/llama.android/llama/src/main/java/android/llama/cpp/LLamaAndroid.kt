@@ -117,36 +117,19 @@ class LLamaAndroid {
     }
 
     fun send(message: String, formatChat: Boolean = false): Flow<String> = flow {
-        val sb = StringBuffer()
         when (val state = threadLocalState.get()) {
             is State.Loaded -> {
-                Log.d(tag, "Starting text generation for message: '$message'")
                 val ncur = IntVar(completion_init(state.context, state.batch, message, formatChat, nlen))
-                Log.d(tag, "Initial ncur: ${ncur.value}, nlen: $nlen")
-
-                var tokenCount = 0
                 while (ncur.value <= nlen) {
                     val str = completion_loop(state.context, state.batch, state.sampler, nlen, ncur)
                     if (str == null) {
-                        Log.d(tag, "completion_loop returned null, breaking after ${0} tokens")
                         break
                     }
-                    tokenCount++
-                    Log.d(tag, "Generated token $tokenCount: '$str', ncur: ${ncur.value}")
-                    sb.append(str)
                     emit(str)
-                    if (sb.contains("<end_of_turn>\n")) {
-                       // kv_cache_clear(state.context)
-                        //break
-                    }
                 }
-
-                Log.d(tag, "Text generation completed. Total tokens: $tokenCount")
                 kv_cache_clear(state.context)
             }
-            else -> {
-                Log.e(tag, "Cannot send message - no model loaded")
-            }
+            else -> {}
         }
     }.flowOn(runLoop)
 

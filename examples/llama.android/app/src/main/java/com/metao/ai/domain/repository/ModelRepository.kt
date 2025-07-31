@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface ModelRepository {
     suspend fun getAvailableModels(): List<ModelInfo>
+    suspend fun addCustomModel(modelInfo: ModelInfo)
     suspend fun downloadModel(modelInfo: ModelInfo): Flow<DownloadState>
     suspend fun loadModel(modelPath: String): Flow<ModelLoadState>
     suspend fun generateText(prompt: String, useChat: Boolean = true): Flow<TextGenerationState>

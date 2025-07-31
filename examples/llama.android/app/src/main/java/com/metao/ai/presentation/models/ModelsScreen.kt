@@ -3,6 +3,8 @@ package com.metao.ai.presentation.models
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,7 +27,9 @@ fun ModelsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val configuration = LocalConfiguration.current
-    val maxWidth = min(configuration.screenWidthDp.dp.value, 400f).dp
+    val maxWidth = min(configuration.screenWidthDp.dp.value, 500f).dp // Increased drawer size
+
+    var showAddModelDialog by remember { mutableStateOf(false) }
 
     // Load models when screen is first displayed
     LaunchedEffect(Unit) {
@@ -34,57 +38,81 @@ fun ModelsScreen(
         }
     }
 
-    Column(
-        modifier = modifier
-            .widthIn(max = maxWidth)
-            .fillMaxHeight()
-            .padding(16.dp)
+    Box(
+        modifier = modifier.fillMaxSize()
     ) {
-        Text(
-            text = "Models",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        Column(
+            modifier = Modifier
+                .widthIn(max = maxWidth)
+                .fillMaxHeight()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Available Models",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
 
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(uiState.models) { model ->
+                        ModelCard(
+                            model = model,
+                            downloadState = viewModel.getDownloadState(model.id),
+                            loadState = viewModel.getLoadState(model.id),
+                            isLoaded = viewModel.isModelLoaded(model.id),
+                            onDownload = { viewModel.downloadModel(model) },
+                            onLoad = { viewModel.loadModel(model) }
+                        )
+                    }
+                }
             }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(uiState.models) { model ->
-                    ModelCard(
-                        model = model,
-                        downloadState = viewModel.getDownloadState(model.id),
-                        loadState = viewModel.getLoadState(model.id),
-                        isLoaded = viewModel.isModelLoaded(model.id),
-                        onDownload = { viewModel.downloadModel(model) },
-                        onLoad = { viewModel.loadModel(model) }
+
+            uiState.error?.let { error ->
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                ) {
+                    Text(
+                        text = error,
+                        color = Color.Red,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
         }
 
-        uiState.error?.let { error ->
-            Spacer(modifier = Modifier.height(16.dp))
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
-            ) {
-                Text(
-                    text = error,
-                    color = Color.Red,
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+        // Floating Action Button to add custom models
+        FloatingActionButton(
+            onClick = { showAddModelDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add Model"
+            )
         }
+
+        // Add Model Dialog
+        AddModelDialog(
+            isVisible = showAddModelDialog,
+            onDismiss = { showAddModelDialog = false },
+            onAddModel = { modelData ->
+                viewModel.addCustomModel(modelData)
+            }
+        )
     }
 }
 
@@ -100,29 +128,29 @@ private fun ModelCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = model.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
 
             Text(
                 text = model.description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray,
-                modifier = Modifier.padding(vertical = 14.dp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
             )
 
             Text(
-                text = "Size: ${formatBytes(model.sizeBytes)}",
+                text = "Size: ${formatFileSize(model.sizeBytes)}",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -161,10 +189,7 @@ private fun DownloadButton(
         is DownloadState.Idle -> {
             Button(
                 onClick = onDownload,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Black,
-                    contentColor = Color.White
-                )
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Download")
             }
@@ -173,51 +198,43 @@ private fun DownloadButton(
             Button(
                 onClick = { },
                 enabled = false,
-                colors = ButtonDefaults.buttonColors(
-                    disabledContainerColor = Color.Gray,
-                    disabledContentColor = Color.White
-                )
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Preparing...")
             }
         }
         is DownloadState.Downloading -> {
             Column {
-                Button(
-                    onClick = { },
-                    enabled = false,
-                    colors = ButtonDefaults.buttonColors(
-                        disabledContainerColor = Color.Gray,
-                        disabledContentColor = Color.White
-                    )
-                ) {
-                    Text("Downloading ${(downloadState.progress * 100).toInt()}%")
-                }
                 LinearProgressIndicator(
                     progress = downloadState.progress,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
+                    modifier = Modifier.fillMaxWidth(),
                 )
+                Text(
+                    text = "Downloading... ${(downloadState.progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+        is DownloadState.Completed -> {
+            Button(
+                onClick = { },
+                enabled = false,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Downloaded")
             }
         }
         is DownloadState.Failed -> {
             Button(
                 onClick = onDownload,
+                modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Red,
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.error
                 )
             ) {
                 Text("Retry")
             }
-        }
-        is DownloadState.Completed -> {
-            Text(
-                text = "✓ Downloaded",
-                color = Color.Green,
-                fontWeight = FontWeight.Bold
-            )
         }
     }
 }
@@ -231,10 +248,7 @@ private fun LoadButton(
         is ModelLoadState.Idle -> {
             Button(
                 onClick = onLoad,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Blue,
-                    contentColor = Color.White
-                )
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Load")
             }
@@ -243,36 +257,38 @@ private fun LoadButton(
             Button(
                 onClick = { },
                 enabled = false,
-                colors = ButtonDefaults.buttonColors(
-                    disabledContainerColor = Color.Gray,
-                    disabledContentColor = Color.White
-                )
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Loading...")
+            }
+        }
+        is ModelLoadState.Loaded -> {
+            Button(
+                onClick = { },
+                enabled = false,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Green
+                )
+            ) {
+                Text("✓ Loaded")
             }
         }
         is ModelLoadState.Failed -> {
             Button(
                 onClick = onLoad,
+                modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Red,
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.error
                 )
             ) {
                 Text("Retry Load")
             }
         }
-        is ModelLoadState.Loaded -> {
-            Text(
-                text = "✓ Loaded",
-                color = Color.Green,
-                fontWeight = FontWeight.Bold
-            )
-        }
     }
 }
 
-private fun formatBytes(bytes: Long): String {
+private fun formatFileSize(bytes: Long): String {
     return when {
         bytes >= 1024 * 1024 * 1024 -> "%.1f GB".format(bytes / (1024.0 * 1024.0 * 1024.0))
         bytes >= 1024 * 1024 -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
