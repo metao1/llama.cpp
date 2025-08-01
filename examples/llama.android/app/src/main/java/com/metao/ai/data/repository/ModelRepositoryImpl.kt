@@ -23,6 +23,7 @@ import com.metao.ai.domain.util.MessageFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
@@ -54,37 +55,43 @@ class ModelRepositoryImpl(
 
     override suspend fun getAvailableModels(): List<ModelInfo> {
         return try {
+            Log.d(TAG, "Getting available models from database...")
+
             // Initialize default models if database is empty
             initializeDefaultModelsIfNeeded()
 
-            // Get all models from database
-            val models = mutableListOf<ModelInfo>()
-            databaseRepository.getAllModels().collect { modelList ->
-                models.clear()
-                models.addAll(modelList)
-                return@collect // Exit after first emission
-            }
+            // Get all models from database using first() to get single emission
+            val models = databaseRepository.getAllModels().first()
+            Log.d(TAG, "Retrieved ${models.size} models from database")
 
             // Update download status based on actual file existence
-            models.map { model ->
+            val updatedModels = models.map { model ->
                 val actuallyDownloaded = model.destinationFile.exists()
                 if (model.isDownloaded != actuallyDownloaded) {
+                    Log.d(TAG, "Updating download status for ${model.name}: $actuallyDownloaded")
                     databaseRepository.updateDownloadStatus(model.id, actuallyDownloaded)
                     model.copy(isDownloaded = actuallyDownloaded)
                 } else {
                     model
                 }
             }
+
+            Log.d(TAG, "Returning ${updatedModels.size} models")
+            updatedModels
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get models from database", e)
+            Log.e(TAG, "Exception details: ${e.message}")
             emptyList()
         }
     }
 
     private suspend fun initializeDefaultModelsIfNeeded() {
         try {
+            Log.d(TAG, "Checking if default models need to be initialized...")
+
             val modelsDir = File(context.getExternalFilesDir(null), "models")
             modelsDir.mkdirs()
+            Log.d(TAG, "Models directory: ${modelsDir.absolutePath}")
 
             val defaultModels = listOf(
                 ModelInfo(
@@ -107,9 +114,12 @@ class ModelRepositoryImpl(
                 )
             )
 
+            Log.d(TAG, "Initializing ${defaultModels.size} default models...")
             databaseRepository.initializeDefaultModels(defaultModels)
+            Log.d(TAG, "Default models initialization completed")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize default models", e)
+            Log.e(TAG, "Exception details: ${e.message}")
         }
     }
 
@@ -242,56 +252,43 @@ class ModelRepositoryImpl(
         }
     }.flowOn(Dispatchers.IO)
 
-    override suspend fun generateText(prompt: String, useChat: Boolean): Flow<TextGenerationState> =
-        flow {
-            emit(TextGenerationState.Generating)
+    override suspend fun generateText(prompt: String, useChat: Boolean): Flow<TextGenerationState> = flow {
+        emit(TextGenerationState.Generating)
+        if (!isModelLoaded) {
+            emit(TextGenerationState.Failed("No model loaded"))
+            return@flow
+        }
+        try {
+            var accumulatedResponse = ""
+            var lastCleanLength = 0
 
-            if (!isModelLoaded) {
-                emit(TextGenerationState.Failed("No model loaded"))
-                return@flow
-            }
+            llamaAndroid.send(prompt, false).collect { token ->
+                accumulatedResponse += token
+                Log.d(
+                    TAG,
+                    "Token: '$token', Accumulated: '${accumulatedResponse.take(100)}...'"
+                )
 
-            try {
-                if (isTestModel) {
-                    // Test model response
-                    val response = "Hello! This is a test response to: $prompt"
-                    response.forEach { char ->
-                        emit(TextGenerationState.TokenGenerated(char.toString()))
-                        delay(50)
-                    }
-                } else {
-                    // Real model response with proper format handling
-                    var accumulatedResponse = ""
-                    var lastCleanLength = 0
+                // Extract clean content from accumulated response
+                val cleanResponse = MessageFormatter.extractResponse(accumulatedResponse)
+                Log.d(TAG, "Clean response: '${cleanResponse.take(50)}...'")
 
-                    llamaAndroid.send(prompt, false).collect { token ->
-                        accumulatedResponse += token
-                        Log.d(
-                            TAG,
-                            "Token: '$token', Accumulated: '${accumulatedResponse.take(100)}...'"
-                        )
-
-                        // Extract clean content from accumulated response
-                        val cleanResponse = MessageFormatter.extractResponse(accumulatedResponse)
-                        Log.d(TAG, "Clean response: '${cleanResponse.take(50)}...'")
-
-                        // Only emit new content that wasn't emitted before
-                        if (cleanResponse.length > lastCleanLength) {
-                            val newContent = cleanResponse.substring(lastCleanLength)
-                            if (newContent.isNotEmpty()) {
-                                Log.d(TAG, "Emitting new content: '$newContent'")
-                                emit(TextGenerationState.TokenGenerated(newContent))
-                                lastCleanLength = cleanResponse.length
-                            }
-                        }
+                // Only emit new content that wasn't emitted before
+                if (cleanResponse.length > lastCleanLength) {
+                    val newContent = cleanResponse.substring(lastCleanLength)
+                    if (newContent.isNotEmpty()) {
+                        Log.d(TAG, "Emitting new content: '$newContent'")
+                        emit(TextGenerationState.TokenGenerated(newContent))
+                        lastCleanLength = cleanResponse.length
                     }
                 }
-                emit(TextGenerationState.Completed)
-            } catch (e: Exception) {
-                Log.e(TAG, "Text generation failed", e)
-                emit(TextGenerationState.Failed(e.message ?: "Generation failed"))
             }
-        }.flowOn(Dispatchers.IO)
+            emit(TextGenerationState.Completed)
+        } catch (e: Exception) {
+            Log.e(TAG, "Text generation failed", e)
+            emit(TextGenerationState.Failed(e.message ?: "Generation failed"))
+        }
+    }.flowOn(Dispatchers.IO)
 
     override suspend fun clearMessages() {
         // Clear conversation history if needed

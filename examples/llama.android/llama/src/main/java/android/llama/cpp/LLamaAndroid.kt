@@ -36,7 +36,7 @@ class LLamaAndroid {
         }
     }.asCoroutineDispatcher()
 
-    private val nlen: Int = 2000
+    private val nlen: Int = 2500
 
     private external fun log_to_android()
     private external fun load_model(filename: String): Long
@@ -123,6 +123,9 @@ class LLamaAndroid {
                 while (ncur.value <= nlen) {
                     val str = completion_loop(state.context, state.batch, state.sampler, nlen, ncur)
                     if (str == null) {
+                        break
+                    }
+                    if (str.contains("user")) {
                         break
                     }
                     emit(str)

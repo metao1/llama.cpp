@@ -1,6 +1,7 @@
 package com.metao.ai.presentation.models
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import java.io.File
@@ -36,11 +37,13 @@ class ModelsViewModel(
 
     fun loadModels() {
         viewModelScope.launch {
+            Log.d("ModelsViewModel", "Loading models...")
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val models = withContext(Dispatchers.IO) {
                     getModelsUseCase()
                 }
+                Log.d("ModelsViewModel", "Loaded ${models.size} models from use case")
                 _uiState.update {
                     it.copy(
                         models = models,
@@ -49,6 +52,7 @@ class ModelsViewModel(
                     )
                 }
             } catch (e: Exception) {
+                Log.e("ModelsViewModel", "Failed to load models", e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,

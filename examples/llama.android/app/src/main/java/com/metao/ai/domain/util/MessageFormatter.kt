@@ -1,27 +1,13 @@
 package com.metao.ai.domain.util
 
 object MessageFormatter {
-
-    /**
-     * Wraps a message in the proper chat format that the model expects
-     * This is crucial for the model to recognize the conversation structure
-     */
-    fun wrapMessage(message: String): String {
-        return "<start_of_turn>user\n$message<end_of_turn>\n<start_of_turn>model\n"
-    }
-
     /**
      * Builds a complete conversation context with proper formatting
      */
     fun buildConversationPrompt(
         currentMessage: String
     ): String {
-        val prompt = StringBuilder()
-        // Add current message
-        prompt.append("<start_of_turn>user\n$currentMessage<end_of_turn>\n")
-        prompt.append("<start_of_turn>model\n")
-
-        return prompt.toString()
+        return "<start_of_turn>user\n$currentMessage<end_of_turn>"
     }
 
     /**
