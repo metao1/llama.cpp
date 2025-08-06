@@ -1,4 +1,4 @@
-package com.example.llama.ui.theme
+package com.metao.ai.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
