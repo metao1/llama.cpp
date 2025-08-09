@@ -96,7 +96,7 @@ class BatteryOptimizedFileWatcher(
         Log.d(TAG, "MediaStore observer registered for ${uris.size} content types")
     }
 
-    private suspend fun handleMediaStoreChange(uri: Uri) {
+    private fun handleMediaStoreChange(uri: Uri) {
         try {
             Log.d(TAG, "MediaStore change detected: $uri")
 

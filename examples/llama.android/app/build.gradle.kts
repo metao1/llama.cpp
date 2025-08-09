@@ -7,12 +7,11 @@ plugins {
 
 android {
     namespace = "com.metao.ai"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.metao.ai"
         minSdk = 33
-        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -35,69 +34,101 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    // START OF FIX 1: Replace deprecated kotlinOptions with the new 'kotlin' block
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
+    // END OF FIX 1
     buildFeatures {
         compose = true
     }
     composeOptions {
+        // Version compatible with Kotlin 1.9.20
         kotlinCompilerExtensionVersion = "1.5.4"
     }
 }
-
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+// Configure Kotlin compilation
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        // Ensure this matches your project's JVM target
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+
+        // Add recommended Kotlin compiler arguments
+        freeCompilerArgs.addAll(
+            "-Xjvm-default=all" // Recommended for modern Kotlin
+        )
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        // Force specific versions to avoid version conflicts
+        force("org.jetbrains.kotlin:kotlin-stdlib:1.9.20")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.20")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.20")
+        force("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+        force("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    }
+}
+
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation(platform("androidx.compose:compose-bom:2023.08.00"))
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation(project(":llama"))
+
+    val composeBom = platform("androidx.compose:compose-bom:2025.07.00")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+
+    // Material Design 3
     implementation("androidx.compose.material3:material3")
 
-    // Architecture Components
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-    implementation("androidx.navigation:navigation-compose:2.7.6")
+    // Android Studio Preview support
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // Koin for Dependency Injection
-    implementation("io.insert-koin:koin-android:3.5.3")
-    implementation("io.insert-koin:koin-androidx-compose:3.5.3")
+    implementation("androidx.compose.material:material-icons-core")
+    // Optional - Add full set of material icons
+    implementation("androidx.compose.material:material-icons-extended")
+    // Optional - Add window size utils
+    implementation("androidx.compose.material3.adaptive:adaptive")
 
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    // Optional - Integration with activities
+    implementation("androidx.activity:activity-compose")
+    // Optional - Integration with ViewModels
 
-    // State Management
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+    // Optional - Integration with LiveData
+    implementation("androidx.compose.runtime:runtime-livedata")
+    // Optional - Integration with RxJava
+    implementation("androidx.compose.runtime:runtime-rxjava2")
 
-    // Room Database
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("com.google.android.material:material:1.12.0")
+
+    // Koin for dependency injection
+    implementation("io.insert-koin:koin-android:3.5.0")
+    implementation("io.insert-koin:koin-androidx-compose:3.5.0")
+
+    // Room database
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
-    // Serialization
+    // Kotlinx Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
-    implementation(project(":llama"))
+    // ViewModel
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 
-    testImplementation(platform("org.junit:junit-bom:5.10.2"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.junit.jupiter:junit-jupiter-api")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2023.08.00"))
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
+// This block ensures JUnit Platform is used for tests
 tasks.withType<Test> {
     useJUnitPlatform()
 }
