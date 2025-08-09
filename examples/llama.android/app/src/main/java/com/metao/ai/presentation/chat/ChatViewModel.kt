@@ -124,28 +124,6 @@ class ChatViewModel(
             }
         }
     }
-
-    fun clearMessages() {
-        viewModelScope.launch {
-            try {
-                // Clear messages in the repository (LLamaAndroid)
-                clearMessagesUseCase()
-
-                // Clear messages in the UI
-                _uiState.update {
-                    it.copy(
-                        messages = emptyList(),
-                        error = null
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(error = "Failed to clear messages: ${e.message}")
-                }
-            }
-        }
-    }
-
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
