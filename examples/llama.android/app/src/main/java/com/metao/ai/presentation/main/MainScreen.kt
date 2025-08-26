@@ -41,9 +41,10 @@ fun MainScreen() {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val windowInfo = LocalWindowInfo.current
     // Convert the window's width from pixels to DP
-    val windowWidthDp = with(LocalDensity.current) {
-        windowInfo.containerSize.width.toDp()
-    }
+    val windowWidthDp =
+        with(LocalDensity.current) {
+            windowInfo.containerSize.width.toDp()
+        }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -51,20 +52,24 @@ fun MainScreen() {
         modifier = Modifier.fillMaxSize(),
         drawerContent = {
             Surface(
-                modifier = Modifier.width(min(DRAWER_MAX_WIDTH_DP, windowWidthDp.value * DRAWER_WIDTH_PERCENTAGE).dp)
-                    .fillMaxHeight(), color = Color.White
+                modifier =
+                    Modifier
+                        .width(min(DRAWER_MAX_WIDTH_DP, windowWidthDp.value * DRAWER_WIDTH_PERCENTAGE).dp)
+                        .fillMaxHeight(),
+                color = Color.White,
             ) {
                 DrawerContent()
             }
-        }
+        },
     ) {
         Scaffold(
-            containerColor = Color.White
+            containerColor = Color.White,
         ) { padding ->
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding),
             ) {
                 FileCategorizeScreen()
             }
@@ -77,31 +82,35 @@ fun MainScreen() {
 private fun DrawerContent() {
     val windowInfo = LocalWindowInfo.current
     // Convert the window's width from pixels to DP
-    val windowWidthDp = with(LocalDensity.current) {
-        windowInfo.containerSize.width.toDp()
-    }
+    val windowWidthDp =
+        with(LocalDensity.current) {
+            windowInfo.containerSize.width.toDp()
+        }
     Column(
-        modifier = Modifier
-            .width(min(DRAWER_MAX_WIDTH_DP, windowWidthDp.value * DRAWER_WIDTH_PERCENTAGE).dp)
-            .fillMaxHeight()
-            .padding(16.dp)
+        modifier =
+            Modifier
+                .width(min(DRAWER_MAX_WIDTH_DP, windowWidthDp.value * DRAWER_WIDTH_PERCENTAGE).dp)
+                .fillMaxHeight()
+                .padding(16.dp),
     ) {
         Text(
             text = "File Categorizer",
             style = MaterialTheme.typography.titleMedium,
             color = Color.Black,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 16.dp),
         )
 
         Button(
             onClick = { /* TODO: Implement benchmark */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Black,
-                contentColor = Color.White
-            )
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = Color.Black,
+                    contentColor = Color.White,
+                ),
         ) {
             Text("Benchmark")
         }
@@ -120,13 +129,15 @@ private fun ResetCategorizationButton() {
 
     Button(
         onClick = { fileCategorizeViewModel.resetCategorization() },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Black,
-            contentColor = Color.White
-        )
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = Color.Black,
+                contentColor = Color.White,
+            ),
     ) {
         Text("Reset Categorization")
     }

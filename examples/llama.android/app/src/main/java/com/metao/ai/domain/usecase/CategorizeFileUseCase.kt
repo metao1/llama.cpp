@@ -9,18 +9,20 @@ import kotlinx.coroutines.flow.catch
 
 class CategorizeFileUseCase(
     private val fileRepository: FileRepository,
-    private val generateTextUseCase: GenerateTextUseCase
+    private val generateTextUseCase: GenerateTextUseCase,
 ) {
     suspend operator fun invoke(
         fileItem: FileItem,
-        availableCategories: List<FileCategory>
-    ): Flow<CategorizationResult> {
-        return fileRepository.categorizeFile(fileItem, availableCategories, generateTextUseCase)
+        availableCategories: List<FileCategory>,
+    ): Flow<CategorizationResult> =
+        fileRepository
+            .categorizeFile(fileItem, availableCategories, generateTextUseCase)
             .catch { throwable ->
                 // Return a default categorization result on error
-                val defaultCategory = availableCategories.find { it.id == "downloads" }
-                    ?: availableCategories.firstOrNull()
-                    ?: FileCategory.getDefaultCategories().first()
+                val defaultCategory =
+                    availableCategories.find { it.id == "downloads" }
+                        ?: availableCategories.firstOrNull()
+                        ?: FileCategory.getDefaultCategories().first()
 
                 emit(
                     CategorizationResult(
@@ -28,9 +30,8 @@ class CategorizeFileUseCase(
                         suggestedCategory = defaultCategory,
                         confidence = 0.1f,
                         reasoning = "Error during categorization: ${throwable.message}",
-                        isConfirmed = false
-                    )
+                        isConfirmed = false,
+                    ),
                 )
             }
-    }
 }

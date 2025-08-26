@@ -46,7 +46,7 @@ import kotlin.math.min
 @Composable
 fun ModelsScreen(
     modifier: Modifier = Modifier,
-    viewModel: ModelsViewModel = koinViewModel()
+    viewModel: ModelsViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val configuration = LocalConfiguration.current
@@ -62,30 +62,31 @@ fun ModelsScreen(
     }
 
     Box(
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize(),
     ) {
         Column(
-            modifier = Modifier
-                .widthIn(max = maxWidth)
-                .fillMaxHeight()
-                .padding(16.dp)
+            modifier =
+                Modifier
+                    .widthIn(max = maxWidth)
+                    .fillMaxHeight()
+                    .padding(16.dp),
         ) {
             Text(
                 text = "Available Models",
                 style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 16.dp),
             )
 
             if (uiState.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
                 }
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(uiState.models) { model ->
                         ModelCard(
@@ -94,7 +95,7 @@ fun ModelsScreen(
                             loadState = viewModel.getLoadState(model.id),
                             isLoaded = viewModel.isModelLoaded(model.id),
                             onDownload = { viewModel.downloadModel(model) },
-                            onLoad = { viewModel.loadModel(model) }
+                            onLoad = { viewModel.loadModel(model) },
                         )
                     }
                 }
@@ -103,13 +104,13 @@ fun ModelsScreen(
             uiState.error?.let { error ->
                 Spacer(modifier = Modifier.height(16.dp))
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
                 ) {
                     Text(
                         text = error,
                         color = Color.Red,
                         modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
@@ -118,13 +119,14 @@ fun ModelsScreen(
         // Floating Action Button to add custom models
         FloatingActionButton(
             onClick = { showAddModelDialog = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Add Model"
+                contentDescription = "Add Model",
             )
         }
 
@@ -134,7 +136,7 @@ fun ModelsScreen(
             onDismiss = { showAddModelDialog = false },
             onAddModel = { modelData ->
                 viewModel.addCustomModel(modelData)
-            }
+            },
         )
     }
 }
@@ -147,33 +149,33 @@ private fun ModelCard(
     isLoaded: Boolean,
     onDownload: () -> Unit,
     onLoad: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
         ) {
             Text(
                 text = model.name,
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             )
 
             Text(
                 text = model.description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp),
             )
 
             Text(
                 text = "Size: ${formatFileSize(model.sizeBytes)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 8.dp),
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -182,20 +184,20 @@ private fun ModelCard(
                 !model.isDownloaded -> {
                     DownloadButton(
                         downloadState = downloadState,
-                        onDownload = onDownload
+                        onDownload = onDownload,
                     )
                 }
                 isLoaded -> {
                     Text(
                         text = "✓ Loaded",
                         color = Color.Green,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 }
                 else -> {
                     LoadButton(
                         loadState = loadState,
-                        onLoad = onLoad
+                        onLoad = onLoad,
                     )
                 }
             }
@@ -206,13 +208,13 @@ private fun ModelCard(
 @Composable
 private fun DownloadButton(
     downloadState: DownloadState,
-    onDownload: () -> Unit
+    onDownload: () -> Unit,
 ) {
     when (downloadState) {
         is DownloadState.Idle -> {
             Button(
                 onClick = onDownload,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Download")
             }
@@ -221,7 +223,7 @@ private fun DownloadButton(
             Button(
                 onClick = { },
                 enabled = false,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Preparing...")
             }
@@ -235,7 +237,7 @@ private fun DownloadButton(
                 Text(
                     text = "Downloading... ${(downloadState.progress * 100).toInt()}%",
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
         }
@@ -243,7 +245,7 @@ private fun DownloadButton(
             Button(
                 onClick = { },
                 enabled = false,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Downloaded")
             }
@@ -252,9 +254,10 @@ private fun DownloadButton(
             Button(
                 onClick = onDownload,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
             ) {
                 Text("Retry")
             }
@@ -265,13 +268,13 @@ private fun DownloadButton(
 @Composable
 private fun LoadButton(
     loadState: ModelLoadState,
-    onLoad: () -> Unit
+    onLoad: () -> Unit,
 ) {
     when (loadState) {
         is ModelLoadState.Idle -> {
             Button(
                 onClick = onLoad,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Load")
             }
@@ -280,7 +283,7 @@ private fun LoadButton(
             Button(
                 onClick = { },
                 enabled = false,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Loading...")
             }
@@ -290,9 +293,10 @@ private fun LoadButton(
                 onClick = { },
                 enabled = false,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Green
-                )
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = Color.Green,
+                    ),
             ) {
                 Text("✓ Loaded")
             }
@@ -301,9 +305,10 @@ private fun LoadButton(
             Button(
                 onClick = onLoad,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
             ) {
                 Text("Retry Load")
             }
@@ -311,11 +316,10 @@ private fun LoadButton(
     }
 }
 
-private fun formatFileSize(bytes: Long): String {
-    return when {
+private fun formatFileSize(bytes: Long): String =
+    when {
         bytes >= 1024 * 1024 * 1024 -> "%.1f GB".format(bytes / (1024.0 * 1024.0 * 1024.0))
         bytes >= 1024 * 1024 -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
         bytes >= 1024 -> "%.1f KB".format(bytes / 1024.0)
         else -> "$bytes bytes"
     }
-}

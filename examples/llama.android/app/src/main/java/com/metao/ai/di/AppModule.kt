@@ -32,64 +32,65 @@ import com.metao.ai.presentation.settings.FileWatcherSettingsViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
-val appModule = module {
+val appModule =
+    module {
 
-    // System Services
-    single<DownloadManager> {
-        get<Context>().getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        // System Services
+        single<DownloadManager> {
+            get<Context>().getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        }
+
+        // Model State Manager
+        single { ModelStateManager() }
+
+        single {
+            LLamaAndroid.instance()
+        }
+
+        // Database
+        single { ModelDatabase.getDatabase(get()) }
+        single { get<ModelDatabase>().modelDao() }
+        single { ModelDatabaseRepository(get()) }
+
+        // Categorization Database
+        single { CategorizationDatabase.getDatabase(get()) }
+        single { get<CategorizationDatabase>().categorizationDao() }
+        single<CategorizationStateRepository> { CategorizationStateRepositoryImpl(get()) }
+
+        // Settings and File Watching
+        single<SettingsRepository> { SettingsRepositoryImpl(get()) }
+        single { FileWatcherManager(get(), get()) }
+
+        // Repository
+        single<ModelRepository> {
+            ModelRepositoryImpl(
+                context = get(),
+                downloadManager = get(),
+                llamaAndroid = get(),
+                databaseRepository = get(),
+            )
+        }
+
+        single<FileRepository> {
+            FileRepositoryImpl(context = get())
+        }
+
+        // Use Cases
+        single { GetModelsUseCase(get()) }
+        single { AddCustomModelUseCase(get()) }
+        single { DownloadModelUseCase(get()) }
+        single { LoadModelUseCase(get()) }
+        single { GenerateTextUseCase(get()) }
+        single { IsModelLoadedUseCase(get()) }
+        single { ClearMessagesUseCase(get()) }
+
+        // File categorization use cases
+        single { ScanDirectoryUseCase(get()) }
+        single { CategorizeFileUseCase(get(), get()) }
+        single { MoveFilesUseCase(get()) }
+
+        // ViewModels
+        viewModel { ModelsViewModel(get(), get(), get(), get(), get()) }
+        viewModel { FileCategorizeViewModel(get(), get(), get(), get(), get()) }
+        viewModel { FileWatcherSettingsViewModel(get(), get()) }
     }
-
-    // Model State Manager
-    single { ModelStateManager() }
-
-    single {
-        LLamaAndroid.instance()
-    }
-
-    // Database
-    single { ModelDatabase.getDatabase(get()) }
-    single { get<ModelDatabase>().modelDao() }
-    single { ModelDatabaseRepository(get()) }
-
-    // Categorization Database
-    single { CategorizationDatabase.getDatabase(get()) }
-    single { get<CategorizationDatabase>().categorizationDao() }
-    single<CategorizationStateRepository> { CategorizationStateRepositoryImpl(get()) }
-
-    // Settings and File Watching
-    single<SettingsRepository> { SettingsRepositoryImpl(get()) }
-    single { FileWatcherManager(get(), get()) }
-
-    // Repository
-    single<ModelRepository> {
-        ModelRepositoryImpl(
-            context = get(),
-            downloadManager = get(),
-            llamaAndroid = get(),
-            databaseRepository = get()
-        )
-    }
-
-    single<FileRepository> {
-        FileRepositoryImpl(context = get())
-    }
-
-    // Use Cases
-    single { GetModelsUseCase(get()) }
-    single { AddCustomModelUseCase(get()) }
-    single { DownloadModelUseCase(get()) }
-    single { LoadModelUseCase(get()) }
-    single { GenerateTextUseCase(get()) }
-    single { IsModelLoadedUseCase(get()) }
-    single { ClearMessagesUseCase(get()) }
-
-    // File categorization use cases
-    single { ScanDirectoryUseCase(get()) }
-    single { CategorizeFileUseCase(get(), get()) }
-    single { MoveFilesUseCase(get()) }
-
-    // ViewModels
-    viewModel { ModelsViewModel(get(), get(), get(), get(), get()) }
-    viewModel { FileCategorizeViewModel(get(), get(), get(), get(), get()) }
-    viewModel { FileWatcherSettingsViewModel(get(), get()) }
-}

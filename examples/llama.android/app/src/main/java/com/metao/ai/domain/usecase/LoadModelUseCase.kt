@@ -6,12 +6,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 
 class LoadModelUseCase(
-    private val repository: ModelRepository
+    private val repository: ModelRepository,
 ) {
-    suspend operator fun invoke(modelPath: String): Flow<ModelLoadState> {
-        return repository.loadModel(modelPath)
+    suspend operator fun invoke(modelPath: String): Flow<ModelLoadState> =
+        repository
+            .loadModel(modelPath)
             .catch { throwable ->
                 emit(ModelLoadState.Failed(throwable.message ?: "Unknown load error"))
             }
-    }
 }

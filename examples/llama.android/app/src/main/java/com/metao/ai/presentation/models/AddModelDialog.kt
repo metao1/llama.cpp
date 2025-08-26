@@ -31,7 +31,7 @@ import androidx.compose.ui.window.DialogProperties
 fun AddModelDialog(
     isVisible: Boolean,
     onDismiss: () -> Unit,
-    onAddModel: (AddModelDialogData) -> Unit
+    onAddModel: (AddModelDialogData) -> Unit,
 ) {
     if (isVisible) {
         var name by remember { mutableStateOf("") }
@@ -41,27 +41,30 @@ fun AddModelDialog(
 
         Dialog(
             onDismissRequest = onDismiss,
-            properties = DialogProperties(
-                dismissOnBackPress = true,
-                dismissOnClickOutside = true
-            )
+            properties =
+                DialogProperties(
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true,
+                ),
         ) {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Text(
                         text = "Add New Model",
                         style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
 
                     OutlinedTextField(
@@ -70,7 +73,7 @@ fun AddModelDialog(
                         label = { Text("Model Name") },
                         placeholder = { Text("e.g., Llama 2 7B Chat") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
                     )
 
                     OutlinedTextField(
@@ -79,7 +82,7 @@ fun AddModelDialog(
                         label = { Text("Description") },
                         placeholder = { Text("Brief description of the model") },
                         modifier = Modifier.fillMaxWidth(),
-                        maxLines = 2
+                        maxLines = 2,
                     )
 
                     OutlinedTextField(
@@ -88,7 +91,7 @@ fun AddModelDialog(
                         label = { Text("Download URL") },
                         placeholder = { Text("https://huggingface.co/...") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
                     )
 
                     OutlinedTextField(
@@ -98,16 +101,16 @@ fun AddModelDialog(
                         placeholder = { Text("e.g., 4.2") },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true
+                        singleLine = true,
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         TextButton(
-                            onClick = onDismiss
+                            onClick = onDismiss,
                         ) {
                             Text("Cancel")
                         }
@@ -123,13 +126,13 @@ fun AddModelDialog(
                                             name = name.trim(),
                                             description = description.trim(),
                                             url = url.trim(),
-                                            sizeBytes = (size * 1024 * 1024 * 1024).toLong()
-                                        )
+                                            sizeBytes = (size * 1024 * 1024 * 1024).toLong(),
+                                        ),
                                     )
                                     onDismiss()
                                 }
                             },
-                            enabled = name.isNotBlank() && url.isNotBlank()
+                            enabled = name.isNotBlank() && url.isNotBlank(),
                         ) {
                             Text("Add Model")
                         }

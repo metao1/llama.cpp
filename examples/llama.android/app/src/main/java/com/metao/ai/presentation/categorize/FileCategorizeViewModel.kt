@@ -25,9 +25,8 @@ class FileCategorizeViewModel(
     private val categorizeFileUseCase: CategorizeFileUseCase,
     private val isModelLoadedUseCase: IsModelLoadedUseCase,
     private val modelStateManager: ModelStateManager,
-    private val stateRepository: CategorizationStateRepository
+    private val stateRepository: CategorizationStateRepository,
 ) : ViewModel() {
-
     companion object {
         private const val TAG = "FileCategorizeViewModel"
     }
@@ -78,7 +77,7 @@ class FileCategorizeViewModel(
                 selectedDirectory = directoryPath,
                 categorizationState = CategorizationState.Idle,
                 scannedFiles = emptyList(),
-                categorizationResults = emptyList()
+                categorizationResults = emptyList(),
             )
         }
     }
@@ -100,13 +99,16 @@ class FileCategorizeViewModel(
         _uiState.update {
             it.copy(
                 selectedDirectory = "/storage/emulated/0",
-                error = null
+                error = null,
             )
         }
         scanDirectoryInternal("/storage/emulated/0", includeSubdirectories = true)
     }
 
-    private fun scanDirectoryInternal(directoryPath: String, includeSubdirectories: Boolean) {
+    private fun scanDirectoryInternal(
+        directoryPath: String,
+        includeSubdirectories: Boolean,
+    ) {
         viewModelScope.launch {
             // Create new session for this scan
             createNewSession(directoryPath)
@@ -114,7 +116,7 @@ class FileCategorizeViewModel(
             _uiState.update {
                 it.copy(
                     categorizationState = CategorizationState.ScanningDirectory,
-                    error = null
+                    error = null,
                 )
             }
 
@@ -125,7 +127,7 @@ class FileCategorizeViewModel(
                     _uiState.update {
                         it.copy(
                             scannedFiles = files,
-                            categorizationState = CategorizationState.Idle
+                            categorizationState = CategorizationState.Idle,
                         )
                     }
                 }
@@ -134,7 +136,7 @@ class FileCategorizeViewModel(
                 _uiState.update {
                     it.copy(
                         categorizationState = CategorizationState.Failed(e.message ?: "Scan failed"),
-                        error = e.message
+                        error = e.message,
                     )
                 }
             }
@@ -163,7 +165,7 @@ class FileCategorizeViewModel(
             _uiState.update {
                 it.copy(
                     categorizationState = CategorizationState.CategorizingFiles(0f, "Starting..."),
-                    error = null
+                    error = null,
                 )
             }
 
@@ -174,7 +176,7 @@ class FileCategorizeViewModel(
 
                 _uiState.update {
                     it.copy(
-                        categorizationState = CategorizationState.CategorizingFiles(progress, file.name)
+                        categorizationState = CategorizationState.CategorizingFiles(progress, file.name),
                     )
                 }
 
@@ -182,18 +184,19 @@ class FileCategorizeViewModel(
                     // Quick rule-based pre-check for obvious cases
                     val quickResult = getQuickCategorizationIfObvious(file, categories)
 
-                    val fileResult = if (quickResult != null) {
-                        Log.d(TAG, "Quick categorized ${file.name} -> ${quickResult.suggestedCategory.name}")
-                        quickResult
-                    } else {
-                        // Use AI for complex cases
-                        var aiResult: CategorizationResult? = null
-                        categorizeFileUseCase(file, categories).collect { result ->
-                            aiResult = result
-                            Log.d(TAG, "AI categorized ${file.name} -> ${result.suggestedCategory.name} (${result.confidence})")
+                    val fileResult =
+                        if (quickResult != null) {
+                            Log.d(TAG, "Quick categorized ${file.name} -> ${quickResult.suggestedCategory.name}")
+                            quickResult
+                        } else {
+                            // Use AI for complex cases
+                            var aiResult: CategorizationResult? = null
+                            categorizeFileUseCase(file, categories).collect { result ->
+                                aiResult = result
+                                Log.d(TAG, "AI categorized ${file.name} -> ${result.suggestedCategory.name} (${result.confidence})")
+                            }
+                            aiResult
                         }
-                        aiResult
-                    }
 
                     fileResult?.let {
                         results.add(it)
@@ -203,12 +206,11 @@ class FileCategorizeViewModel(
                             _uiState.update {
                                 it.copy(
                                     categorizationResults = results.toList(),
-                                    moveOperations = createMoveOperations(results.toList())
+                                    moveOperations = createMoveOperations(results.toList()),
                                 )
                             }
                         }
                     }
-
                 } catch (e: Exception) {
                     Log.e(TAG, "Error categorizing ${file.name}", e)
                     // Add a default result for failed categorization
@@ -218,8 +220,8 @@ class FileCategorizeViewModel(
                             fileItem = file,
                             suggestedCategory = defaultCategory,
                             confidence = 0.1f,
-                            reasoning = "❌ Error during categorization: ${e.message}"
-                        )
+                            reasoning = "❌ Error during categorization: ${e.message}",
+                        ),
                     )
                 }
             }
@@ -240,13 +242,16 @@ class FileCategorizeViewModel(
                     categorizationState = CategorizationState.CategorizationComplete(results),
                     categorizationResults = results,
                     moveOperations = moveOperations,
-                    showMovePreview = true
+                    showMovePreview = true,
                 )
             }
         }
     }
 
-    fun confirmCategorization(resultIndex: Int, confirmed: Boolean) {
+    fun confirmCategorization(
+        resultIndex: Int,
+        confirmed: Boolean,
+    ) {
         _uiState.update { state ->
             val updatedResults = state.categorizationResults.toMutableList()
             if (resultIndex in updatedResults.indices) {
@@ -255,12 +260,6 @@ class FileCategorizeViewModel(
             state.copy(categorizationResults = updatedResults)
         }
     }
-
-
-
-
-
-
 
     fun resetCategorization() {
         _uiState.update {
@@ -271,7 +270,7 @@ class FileCategorizeViewModel(
                 moveOperations = emptyList(),
                 moveReport = null,
                 showMovePreview = false,
-                error = null
+                error = null,
             )
         }
     }
@@ -280,13 +279,13 @@ class FileCategorizeViewModel(
         val baseDirectory = _uiState.value.selectedDirectory ?: return emptyList()
 
         return results.map { result ->
-            val categoryFolder = "${baseDirectory}/${result.suggestedCategory.name}"
+            val categoryFolder = "$baseDirectory/${result.suggestedCategory.name}"
             MoveOperation(
                 fileItem = result.fileItem,
                 fromPath = result.fileItem.path,
-                toPath = "${categoryFolder}/${result.fileItem.name}",
+                toPath = "$categoryFolder/${result.fileItem.name}",
                 categoryName = result.suggestedCategory.name,
-                isSelected = result.confidence > 0.7f // Auto-select high confidence suggestions
+                isSelected = result.confidence > 0.7f, // Auto-select high confidence suggestions
             )
         }
     }
@@ -295,9 +294,10 @@ class FileCategorizeViewModel(
         _uiState.update { state ->
             val updatedOperations = state.moveOperations.toMutableList()
             if (index in updatedOperations.indices) {
-                updatedOperations[index] = updatedOperations[index].copy(
-                    isSelected = !updatedOperations[index].isSelected
-                )
+                updatedOperations[index] =
+                    updatedOperations[index].copy(
+                        isSelected = !updatedOperations[index].isSelected,
+                    )
             }
             state.copy(moveOperations = updatedOperations)
         }
@@ -334,7 +334,7 @@ class FileCategorizeViewModel(
             _uiState.update {
                 it.copy(
                     categorizationState = CategorizationState.MovingFiles(0f, "Starting..."),
-                    error = null
+                    error = null,
                 )
             }
 
@@ -343,10 +343,11 @@ class FileCategorizeViewModel(
                     val progress = index.toFloat() / selectedOperations.size
                     _uiState.update {
                         it.copy(
-                            categorizationState = CategorizationState.MovingFiles(
-                                progress,
-                                operation.fileItem.name
-                            )
+                            categorizationState =
+                                CategorizationState.MovingFiles(
+                                    progress,
+                                    operation.fileItem.name,
+                                ),
                         )
                     }
 
@@ -365,11 +366,12 @@ class FileCategorizeViewModel(
                         val targetFile = java.io.File(operation.toPath)
 
                         // Handle file name conflicts
-                        val finalTarget = if (targetFile.exists()) {
-                            generateUniqueFileName(targetFile)
-                        } else {
-                            targetFile
-                        }
+                        val finalTarget =
+                            if (targetFile.exists()) {
+                                generateUniqueFileName(targetFile)
+                            } else {
+                                targetFile
+                            }
 
                         if (sourceFile.renameTo(finalTarget)) {
                             successfulMoves++
@@ -387,30 +389,30 @@ class FileCategorizeViewModel(
                 }
 
                 val duration = System.currentTimeMillis() - startTime
-                val report = MoveReport(
-                    totalOperations = selectedOperations.size,
-                    successfulMoves = successfulMoves,
-                    failedMoves = failedMoves,
-                    skippedMoves = 0,
-                    createdDirectories = createdDirectories.distinct(),
-                    errors = errors,
-                    duration = duration
-                )
+                val report =
+                    MoveReport(
+                        totalOperations = selectedOperations.size,
+                        successfulMoves = successfulMoves,
+                        failedMoves = failedMoves,
+                        skippedMoves = 0,
+                        createdDirectories = createdDirectories.distinct(),
+                        errors = errors,
+                        duration = duration,
+                    )
 
                 _uiState.update {
                     it.copy(
                         categorizationState = CategorizationState.FilesMovedSuccessfully,
                         moveReport = report,
-                        showMovePreview = false
+                        showMovePreview = false,
                     )
                 }
-
             } catch (e: Exception) {
                 Log.e(TAG, "Error during move operations", e)
                 _uiState.update {
                     it.copy(
                         categorizationState = CategorizationState.Failed(e.message ?: "Move failed"),
-                        error = e.message
+                        error = e.message,
                     )
                 }
             }
@@ -423,11 +425,12 @@ class FileCategorizeViewModel(
         var counter = 1
 
         while (true) {
-            val newName = if (extension.isNotEmpty()) {
-                "${nameWithoutExt}_$counter.$extension"
-            } else {
-                "${nameWithoutExt}_$counter"
-            }
+            val newName =
+                if (extension.isNotEmpty()) {
+                    "${nameWithoutExt}_$counter.$extension"
+                } else {
+                    "${nameWithoutExt}_$counter"
+                }
             val newFile = java.io.File(file.parent, newName)
             if (!newFile.exists()) {
                 return newFile
@@ -438,7 +441,7 @@ class FileCategorizeViewModel(
 
     private fun getQuickCategorizationIfObvious(
         file: FileItem,
-        categories: List<FileCategory>
+        categories: List<FileCategory>,
     ): CategorizationResult? {
         val fileName = file.name.lowercase()
         val extension = file.extension.lowercase()
@@ -460,9 +463,9 @@ class FileCategorizeViewModel(
         file: FileItem,
         extension: String,
         categories: List<FileCategory>,
-        isInDownloads: Boolean
-    ): CategorizationResult? {
-        return when (extension) {
+        isInDownloads: Boolean,
+    ): CategorizationResult? =
+        when (extension) {
             // Documents
             "pdf" -> {
                 val targetFolder = if (isInDownloads) "Documents/PDF" else "Documents"
@@ -542,14 +545,13 @@ class FileCategorizeViewModel(
 
             else -> null
         }
-    }
 
     private fun categorizeByFilenamePatterns(
         file: FileItem,
         fileName: String,
-        categories: List<FileCategory>
-    ): CategorizationResult? {
-        return when {
+        categories: List<FileCategory>,
+    ): CategorizationResult? =
+        when {
             // Financial documents
             fileName.contains("receipt") || fileName.contains("invoice") || fileName.contains("bill") -> {
                 categories.find { it.id == "receipts" }?.let {
@@ -559,7 +561,7 @@ class FileCategorizeViewModel(
 
             // Work documents
             fileName.contains("meeting") || fileName.contains("work") || fileName.contains("project") ||
-            fileName.contains("report") || fileName.contains("presentation") -> {
+                fileName.contains("report") || fileName.contains("presentation") -> {
                 categories.find { it.id == "work" }?.let {
                     CategorizationResult(file, it, 0.9f, "💼 Pattern: Work document")
                 }
@@ -567,7 +569,7 @@ class FileCategorizeViewModel(
 
             // ID Documents
             fileName.contains("passport") || fileName.contains("license") || fileName.contains("id") ||
-            fileName.contains("certificate") || fileName.contains("driver") -> {
+                fileName.contains("certificate") || fileName.contains("driver") -> {
                 categories.find { it.id == "id_docs" }?.let {
                     CategorizationResult(file, it, 0.95f, "🆔 Pattern: ID document")
                 }
@@ -582,7 +584,6 @@ class FileCategorizeViewModel(
 
             else -> null
         }
-    }
 
     // Session Management Methods
     private suspend fun restoreLastSession() {
@@ -602,7 +603,7 @@ class FileCategorizeViewModel(
                         _uiState.update {
                             it.copy(
                                 categorizationResults = results,
-                                categorizationState = CategorizationState.CategorizationComplete(results)
+                                categorizationState = CategorizationState.CategorizationComplete(results),
                             )
                         }
 
@@ -613,7 +614,7 @@ class FileCategorizeViewModel(
                                 _uiState.update {
                                     it.copy(
                                         moveOperations = operations,
-                                        showMovePreview = true
+                                        showMovePreview = true,
                                     )
                                 }
                             }
@@ -640,7 +641,7 @@ class FileCategorizeViewModel(
                     scanned = _uiState.value.scannedFiles.size,
                     categorized = results.size,
                     moved = 0,
-                    failed = 0
+                    failed = 0,
                 )
                 Log.d(TAG, "Saved ${results.size} categorization results to session $sessionId")
             } catch (e: Exception) {
@@ -671,5 +672,5 @@ data class FileCategorizeUiState(
     val categorizationState: CategorizationState = CategorizationState.Idle,
     val isModelLoaded: Boolean = false,
     val error: String? = null,
-    val showMovePreview: Boolean = false
+    val showMovePreview: Boolean = false,
 )

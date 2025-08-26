@@ -30,7 +30,6 @@ import org.koin.android.ext.android.inject
 import java.io.File
 
 class FileProcessingService : Service() {
-
     companion object {
         private const val TAG = "FileProcessingService"
         private const val NOTIFICATION_ID = 1001
@@ -50,11 +49,15 @@ class FileProcessingService : Service() {
         const val EXTRA_FILE_PATHS = "file_paths"
         const val EXTRA_SESSION_ID = "session_id"
 
-        fun startMonitoring(context: Context, directoryPaths: List<String>) {
-            val intent = Intent(context, FileProcessingService::class.java).apply {
-                action = ACTION_START_MONITORING
-                putStringArrayListExtra(EXTRA_DIRECTORIES, ArrayList(directoryPaths))
-            }
+        fun startMonitoring(
+            context: Context,
+            directoryPaths: List<String>,
+        ) {
+            val intent =
+                Intent(context, FileProcessingService::class.java).apply {
+                    action = ACTION_START_MONITORING
+                    putStringArrayListExtra(EXTRA_DIRECTORIES, ArrayList(directoryPaths))
+                }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -63,19 +66,26 @@ class FileProcessingService : Service() {
         }
 
         fun stopMonitoring(context: Context) {
-            val intent = Intent(context, FileProcessingService::class.java).apply {
-                action = ACTION_STOP_MONITORING
-            }
+            val intent =
+                Intent(context, FileProcessingService::class.java).apply {
+                    action = ACTION_STOP_MONITORING
+                }
             context.startService(intent)
         }
 
-        fun scanDirectory(context: Context, directoryPath: String, includeSubdirectories: Boolean = false, sessionId: String? = null) {
-            val intent = Intent(context, FileProcessingService::class.java).apply {
-                action = ACTION_SCAN_DIRECTORY
-                putExtra(EXTRA_DIRECTORY_PATH, directoryPath)
-                putExtra(EXTRA_INCLUDE_SUBDIRECTORIES, includeSubdirectories)
-                sessionId?.let { putExtra(EXTRA_SESSION_ID, it) }
-            }
+        fun scanDirectory(
+            context: Context,
+            directoryPath: String,
+            includeSubdirectories: Boolean = false,
+            sessionId: String? = null,
+        ) {
+            val intent =
+                Intent(context, FileProcessingService::class.java).apply {
+                    action = ACTION_SCAN_DIRECTORY
+                    putExtra(EXTRA_DIRECTORY_PATH, directoryPath)
+                    putExtra(EXTRA_INCLUDE_SUBDIRECTORIES, includeSubdirectories)
+                    sessionId?.let { putExtra(EXTRA_SESSION_ID, it) }
+                }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -83,12 +93,17 @@ class FileProcessingService : Service() {
             }
         }
 
-        fun categorizeFiles(context: Context, filePaths: List<String>, sessionId: String? = null) {
-            val intent = Intent(context, FileProcessingService::class.java).apply {
-                action = ACTION_CATEGORIZE_FILES
-                putStringArrayListExtra(EXTRA_FILE_PATHS, ArrayList(filePaths))
-                sessionId?.let { putExtra(EXTRA_SESSION_ID, it) }
-            }
+        fun categorizeFiles(
+            context: Context,
+            filePaths: List<String>,
+            sessionId: String? = null,
+        ) {
+            val intent =
+                Intent(context, FileProcessingService::class.java).apply {
+                    action = ACTION_CATEGORIZE_FILES
+                    putStringArrayListExtra(EXTRA_FILE_PATHS, ArrayList(filePaths))
+                    sessionId?.let { putExtra(EXTRA_SESSION_ID, it) }
+                }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -116,10 +131,20 @@ class FileProcessingService : Service() {
 
     // Callback interface for UI updates
     interface ProcessingCallback {
-        fun onScanProgress(scannedCount: Int, totalCount: Int)
+        fun onScanProgress(
+            scannedCount: Int,
+            totalCount: Int,
+        )
+
         fun onScanComplete(files: List<FileItem>)
-        fun onCategorizationProgress(processedCount: Int, totalCount: Int)
+
+        fun onCategorizationProgress(
+            processedCount: Int,
+            totalCount: Int,
+        )
+
         fun onCategorizationComplete(results: List<CategorizationResult>)
+
         fun onError(error: String)
     }
 
@@ -135,7 +160,11 @@ class FileProcessingService : Service() {
         createNotificationChannel()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         Log.d(TAG, "FileProcessingService started with action: ${intent?.action}")
 
         when (intent?.action) {
@@ -181,10 +210,11 @@ class FileProcessingService : Service() {
 
         startForeground(NOTIFICATION_ID, createNotification("Monitoring file changes..."))
 
-        batteryOptimizedWatcher = BatteryOptimizedFileWatcher(this) { newFiles ->
-            Log.d(TAG, "New files detected: ${newFiles.size}")
-            showCategorizationNotification(newFiles)
-        }
+        batteryOptimizedWatcher =
+            BatteryOptimizedFileWatcher(this) { newFiles ->
+                Log.d(TAG, "New files detected: ${newFiles.size}")
+                showCategorizationNotification(newFiles)
+            }
         batteryOptimizedWatcher?.startWatching(directories)
     }
 
@@ -195,7 +225,11 @@ class FileProcessingService : Service() {
         stopForeground(true)
     }
 
-    private fun scanDirectoryInternal(directoryPath: String, includeSubdirectories: Boolean, sessionId: String?) {
+    private fun scanDirectoryInternal(
+        directoryPath: String,
+        includeSubdirectories: Boolean,
+        sessionId: String?,
+    ) {
         if (isProcessingFiles) {
             Log.w(TAG, "Already processing files, ignoring scan request")
             return
@@ -228,7 +262,6 @@ class FileProcessingService : Service() {
                 }
 
                 updateNotification("Scan complete: ${files.size} files found")
-
             } catch (e: Exception) {
                 Log.e(TAG, "Error during directory scan", e)
                 processingCallback?.onError("Scan failed: ${e.message}")
@@ -239,7 +272,10 @@ class FileProcessingService : Service() {
         }
     }
 
-    private fun categorizeFilesInternal(filePaths: List<String>, sessionId: String?) {
+    private fun categorizeFilesInternal(
+        filePaths: List<String>,
+        sessionId: String?,
+    ) {
         if (isProcessingFiles) {
             Log.w(TAG, "Already processing files, ignoring categorization request")
             return
@@ -283,7 +319,6 @@ class FileProcessingService : Service() {
                 }
 
                 updateNotification("Categorization complete: ${results.size} files processed")
-
             } catch (e: Exception) {
                 Log.e(TAG, "Error during file categorization", e)
                 processingCallback?.onError("Categorization failed: ${e.message}")
@@ -294,8 +329,8 @@ class FileProcessingService : Service() {
         }
     }
 
-    private fun createFileItem(file: File): FileItem {
-        return FileItem(
+    private fun createFileItem(file: File): FileItem =
+        FileItem(
             file = file,
             name = file.name,
             path = file.absolutePath,
@@ -304,20 +339,20 @@ class FileProcessingService : Service() {
             mimeType = null,
             lastModified = java.util.Date(file.lastModified()),
             isDirectory = false,
-            contentPreview = null
+            contentPreview = null,
         )
-    }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "File Processing",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "File scanning and categorization operations"
-                setShowBadge(false)
-            }
+            val channel =
+                NotificationChannel(
+                    CHANNEL_ID,
+                    "File Processing",
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    description = "File scanning and categorization operations"
+                    setShowBadge(false)
+                }
 
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
@@ -325,16 +360,21 @@ class FileProcessingService : Service() {
     }
 
     private fun createNotification(content: String): Notification {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
+        val intent =
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
 
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val pendingIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat
+            .Builder(this, CHANNEL_ID)
             .setContentTitle("File Processing")
             .setContentText(content)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -351,35 +391,39 @@ class FileProcessingService : Service() {
     }
 
     private fun showCategorizationNotification(files: List<FileItem>) {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("auto_categorize", true)
-            putExtra("new_files_count", files.size)
-        }
+        val intent =
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                putExtra("auto_categorize", true)
+                putExtra("new_files_count", files.size)
+            }
 
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("New Files Detected!")
-            .setContentText("${files.size} new files ready for categorization")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .addAction(
-                R.drawable.ic_launcher_foreground,
-                "Categorize Now",
-                pendingIntent
+        val pendingIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
-            .build()
+
+        val notification =
+            NotificationCompat
+                .Builder(this, CHANNEL_ID)
+                .setContentTitle("New Files Detected!")
+                .setContentText("${files.size} new files ready for categorization")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .addAction(
+                    R.drawable.ic_launcher_foreground,
+                    "Categorize Now",
+                    pendingIntent,
+                ).build()
 
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(NOTIFICATION_ID + 1, notification)
 
         Log.d(TAG, "Showed categorization notification for ${files.size} files")
     }
-
 }

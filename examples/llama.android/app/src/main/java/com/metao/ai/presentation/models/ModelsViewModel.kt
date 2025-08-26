@@ -26,9 +26,8 @@ class ModelsViewModel(
     private val addCustomModelUseCase: AddCustomModelUseCase,
     private val downloadModelUseCase: DownloadModelUseCase,
     private val loadModelUseCase: LoadModelUseCase,
-    private val modelStateManager: ModelStateManager
+    private val modelStateManager: ModelStateManager,
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(ModelsUiState())
     val uiState: StateFlow<ModelsUiState> = _uiState.asStateFlow()
 
@@ -40,15 +39,16 @@ class ModelsViewModel(
             Log.d("ModelsViewModel", "Loading models...")
             _uiState.update { it.copy(isLoading = true) }
             try {
-                val models = withContext(Dispatchers.IO) {
-                    getModelsUseCase()
-                }
+                val models =
+                    withContext(Dispatchers.IO) {
+                        getModelsUseCase()
+                    }
                 Log.d("ModelsViewModel", "Loaded ${models.size} models from use case")
                 _uiState.update {
                     it.copy(
                         models = models,
                         isLoading = false,
-                        error = null
+                        error = null,
                     )
                 }
             } catch (e: Exception) {
@@ -56,7 +56,7 @@ class ModelsViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Failed to load models"
+                        error = e.message ?: "Failed to load models",
                     )
                 }
             }
@@ -68,7 +68,7 @@ class ModelsViewModel(
             downloadModelUseCase(modelInfo).collect { state ->
                 _uiState.update { currentState ->
                     currentState.copy(
-                        downloadStates = currentState.downloadStates + (modelInfo.id to state)
+                        downloadStates = currentState.downloadStates + (modelInfo.id to state),
                     )
                 }
 
@@ -87,7 +87,7 @@ class ModelsViewModel(
             loadModelUseCase(modelInfo.destinationFile.absolutePath).collect { state ->
                 _uiState.update { currentState ->
                     currentState.copy(
-                        loadStates = currentState.loadStates + (modelInfo.id to state)
+                        loadStates = currentState.loadStates + (modelInfo.id to state),
                     )
                 }
 
@@ -116,38 +116,38 @@ class ModelsViewModel(
         _uiState.update { it.copy(error = null) }
     }
 
-    fun getDownloadState(modelId: String): DownloadState {
-        return _uiState.value.downloadStates[modelId] ?: DownloadState.Idle
-    }
+    fun getDownloadState(modelId: String): DownloadState = _uiState.value.downloadStates[modelId] ?: DownloadState.Idle
 
-    fun getLoadState(modelId: String): ModelLoadState {
-        return _uiState.value.loadStates[modelId] ?: ModelLoadState.Idle
-    }
+    fun getLoadState(modelId: String): ModelLoadState = _uiState.value.loadStates[modelId] ?: ModelLoadState.Idle
 
-    fun isModelLoaded(modelId: String): Boolean {
-        return _uiState.value.loadedModelId == modelId
-    }
+    fun isModelLoaded(modelId: String): Boolean = _uiState.value.loadedModelId == modelId
 
     fun addCustomModel(modelData: AddModelDialogData) {
         viewModelScope.launch {
             try {
                 // Create a custom model info
-                val customModel = ModelInfo(
-                    id = "custom_${System.currentTimeMillis()}",
-                    name = modelData.name,
-                    description = modelData.description,
-                    sourceUrl = Uri.parse(modelData.url),
-                    destinationFile = File("/storage/emulated/0/Android/data/com.metao.ai/files/models/${modelData.name.replace(" ", "_").lowercase()}.gguf"),
-                    sizeBytes = modelData.sizeBytes,
-                    isDownloaded = false
-                )
+                val customModel =
+                    ModelInfo(
+                        id = "custom_${System.currentTimeMillis()}",
+                        name = modelData.name,
+                        description = modelData.description,
+                        sourceUrl = Uri.parse(modelData.url),
+                        destinationFile =
+                            File(
+                                "/storage/emulated/0/Android/data/com.metao.ai/files/models/${modelData.name.replace(
+                                    " ",
+                                    "_",
+                                ).lowercase()}.gguf",
+                            ),
+                        sizeBytes = modelData.sizeBytes,
+                        isDownloaded = false,
+                    )
 
                 // Save to database (this will persist the model)
                 addCustomModelUseCase(customModel)
 
                 // Reload models from database to update UI
                 loadModels()
-
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(error = "Failed to add model: ${e.message}")
@@ -161,5 +161,5 @@ data class AddModelDialogData(
     val name: String,
     val description: String,
     val url: String,
-    val sizeBytes: Long
+    val sizeBytes: Long,
 )

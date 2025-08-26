@@ -34,43 +34,48 @@ data class CategorizationResultEntity(
     val reasoning: String,
     val isConfirmed: Boolean,
     val createdAt: Long = System.currentTimeMillis(),
-    val sessionId: String? = null
+    val sessionId: String? = null,
 ) {
     fun toDomainModel(): CategorizationResult {
-        val fileItem = FileItem(
-            file = File(filePath),
-            name = fileName,
-            path = filePath,
-            sizeBytes = sizeBytes,
-            extension = extension,
-            mimeType = mimeType,
-            lastModified = Date(lastModified),
-            isDirectory = isDirectory,
-            contentPreview = contentPreview
-        )
+        val fileItem =
+            FileItem(
+                file = File(filePath),
+                name = fileName,
+                path = filePath,
+                sizeBytes = sizeBytes,
+                extension = extension,
+                mimeType = mimeType,
+                lastModified = Date(lastModified),
+                isDirectory = isDirectory,
+                contentPreview = contentPreview,
+            )
 
-        val category = FileCategory(
-            id = suggestedCategoryId,
-            name = suggestedCategoryName,
-            description = suggestedCategoryDescription,
-            keywords = Json.decodeFromString<List<String>>(suggestedCategoryKeywords),
-            fileTypes = Json.decodeFromString<List<FileType>>(suggestedCategoryFileTypes),
-            color = suggestedCategoryColor,
-            isDefault = false
-        )
+        val category =
+            FileCategory(
+                id = suggestedCategoryId,
+                name = suggestedCategoryName,
+                description = suggestedCategoryDescription,
+                keywords = Json.decodeFromString<List<String>>(suggestedCategoryKeywords),
+                fileTypes = Json.decodeFromString<List<FileType>>(suggestedCategoryFileTypes),
+                color = suggestedCategoryColor,
+                isDefault = false,
+            )
 
         return CategorizationResult(
             fileItem = fileItem,
             suggestedCategory = category,
             confidence = confidence,
             reasoning = reasoning,
-            isConfirmed = isConfirmed
+            isConfirmed = isConfirmed,
         )
     }
 
     companion object {
-        fun fromDomainModel(result: CategorizationResult, sessionId: String? = null): CategorizationResultEntity {
-            return CategorizationResultEntity(
+        fun fromDomainModel(
+            result: CategorizationResult,
+            sessionId: String? = null,
+        ): CategorizationResultEntity =
+            CategorizationResultEntity(
                 filePath = result.fileItem.path,
                 fileName = result.fileItem.name,
                 sizeBytes = result.fileItem.sizeBytes,
@@ -88,30 +93,21 @@ data class CategorizationResultEntity(
                 confidence = result.confidence,
                 reasoning = result.reasoning,
                 isConfirmed = result.isConfirmed,
-                sessionId = sessionId
+                sessionId = sessionId,
             )
-        }
     }
 }
 
 class CategorizationResultConverters {
     @TypeConverter
-    fun fromStringList(value: List<String>): String {
-        return Json.encodeToString(value)
-    }
+    fun fromStringList(value: List<String>): String = Json.encodeToString(value)
 
     @TypeConverter
-    fun toStringList(value: String): List<String> {
-        return Json.decodeFromString(value)
-    }
+    fun toStringList(value: String): List<String> = Json.decodeFromString(value)
 
     @TypeConverter
-    fun fromFileTypeList(value: List<FileType>): String {
-        return Json.encodeToString(value)
-    }
+    fun fromFileTypeList(value: List<FileType>): String = Json.encodeToString(value)
 
     @TypeConverter
-    fun toFileTypeList(value: String): List<FileType> {
-        return Json.decodeFromString(value)
-    }
+    fun toFileTypeList(value: String): List<FileType> = Json.decodeFromString(value)
 }

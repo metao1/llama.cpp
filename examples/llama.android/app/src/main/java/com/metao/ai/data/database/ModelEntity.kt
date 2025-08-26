@@ -17,24 +17,23 @@ data class ModelEntity(
     val sizeBytes: Long,
     val isDownloaded: Boolean,
     val isCustom: Boolean = false,
-    val dateAdded: Long = System.currentTimeMillis()
+    val dateAdded: Long = System.currentTimeMillis(),
 )
 
 // Extension functions to convert between Entity and Domain model
-fun ModelEntity.toDomainModel(): ModelInfo {
-    return ModelInfo(
+fun ModelEntity.toDomainModel(): ModelInfo =
+    ModelInfo(
         id = id,
         name = name,
         description = description,
         sourceUrl = sourceUrl.toUri(),
         destinationFile = File(destinationPath),
         sizeBytes = sizeBytes,
-        isDownloaded = isDownloaded
+        isDownloaded = isDownloaded,
     )
-}
 
-fun ModelInfo.toEntity(isCustom: Boolean = false): ModelEntity {
-    return ModelEntity(
+fun ModelInfo.toEntity(isCustom: Boolean = false): ModelEntity =
+    ModelEntity(
         id = id,
         name = name,
         description = description,
@@ -42,6 +41,5 @@ fun ModelInfo.toEntity(isCustom: Boolean = false): ModelEntity {
         destinationPath = destinationFile.absolutePath,
         sizeBytes = sizeBytes,
         isDownloaded = isDownloaded,
-        isCustom = isCustom
+        isCustom = isCustom,
     )
-}

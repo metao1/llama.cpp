@@ -14,5 +14,5 @@ data class CategorizationSessionEntity(
     val isCompleted: Boolean,
     val createdAt: Long = System.currentTimeMillis(),
     val completedAt: Long? = null,
-    val lastAccessedAt: Long = System.currentTimeMillis()
+    val lastAccessedAt: Long = System.currentTimeMillis(),
 )

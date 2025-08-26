@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CategorizationDao {
-
     // Session operations
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSession(session: CategorizationSessionEntity)
@@ -30,7 +29,10 @@ interface CategorizationDao {
     suspend fun getLastSession(): CategorizationSessionEntity?
 
     @Query("UPDATE categorization_sessions SET lastAccessedAt = :timestamp WHERE sessionId = :sessionId")
-    suspend fun updateLastAccessed(sessionId: String, timestamp: Long = System.currentTimeMillis())
+    suspend fun updateLastAccessed(
+        sessionId: String,
+        timestamp: Long = System.currentTimeMillis(),
+    )
 
     // Categorization results operations
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -65,13 +67,26 @@ interface CategorizationDao {
     fun getMoveOperationsForSession(sessionId: String): Flow<List<MoveOperationEntity>>
 
     @Query("UPDATE move_operations SET isSelected = :isSelected WHERE sessionId = :sessionId")
-    suspend fun updateAllMoveOperationsSelection(sessionId: String, isSelected: Boolean)
+    suspend fun updateAllMoveOperationsSelection(
+        sessionId: String,
+        isSelected: Boolean,
+    )
 
     @Query("UPDATE move_operations SET isSelected = :isSelected WHERE id = :operationId")
-    suspend fun updateMoveOperationSelection(operationId: String, isSelected: Boolean)
+    suspend fun updateMoveOperationSelection(
+        operationId: String,
+        isSelected: Boolean,
+    )
 
-    @Query("UPDATE move_operations SET isExecuted = :isExecuted, executedAt = :executedAt, executionResult = :result WHERE id = :operationId")
-    suspend fun updateMoveOperationExecution(operationId: String, isExecuted: Boolean, executedAt: Long, result: String)
+    @Query(
+        "UPDATE move_operations SET isExecuted = :isExecuted, executedAt = :executedAt, executionResult = :result WHERE id = :operationId",
+    )
+    suspend fun updateMoveOperationExecution(
+        operationId: String,
+        isExecuted: Boolean,
+        executedAt: Long,
+        result: String,
+    )
 
     @Query("DELETE FROM move_operations WHERE sessionId = :sessionId")
     suspend fun deleteMoveOperationsForSession(sessionId: String)
