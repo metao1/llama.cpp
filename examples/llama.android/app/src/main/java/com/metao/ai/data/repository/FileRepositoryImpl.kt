@@ -4,9 +4,9 @@ import android.content.Context
 import android.os.Environment
 import android.util.Log
 import android.webkit.MimeTypeMap
-import com.metao.ai.domain.model.FileItem
-import com.metao.ai.domain.model.FileCategory
 import com.metao.ai.domain.model.CategorizationResult
+import com.metao.ai.domain.model.FileCategory
+import com.metao.ai.domain.model.FileItem
 import com.metao.ai.domain.model.TextGenerationState
 import com.metao.ai.domain.repository.FileRepository
 import com.metao.ai.domain.usecase.GenerateTextUseCase
@@ -14,14 +14,9 @@ import com.metao.ai.domain.usecase.MoveFileProgress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
-import java.util.Date
 
 class FileRepositoryImpl(
     private val context: Context

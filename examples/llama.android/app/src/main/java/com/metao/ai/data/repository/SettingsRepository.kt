@@ -2,10 +2,10 @@ package com.metao.ai.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import androidx.core.content.edit
 
 interface SettingsRepository {
     suspend fun setFileWatchingEnabled(enabled: Boolean)

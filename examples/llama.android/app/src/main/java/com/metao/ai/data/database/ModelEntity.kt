@@ -1,11 +1,10 @@
 package com.metao.ai.data.database
 
+import androidx.core.net.toUri
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.metao.ai.domain.model.ModelInfo
-import android.net.Uri
 import java.io.File
-import androidx.core.net.toUri
 
 @Entity(tableName = "models")
 data class ModelEntity(

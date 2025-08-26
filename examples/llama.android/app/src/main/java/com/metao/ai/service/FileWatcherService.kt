@@ -9,28 +9,25 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.Build
-import android.os.FileObserver
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.metao.ai.MainActivity
 import com.metao.ai.R
-import com.metao.ai.domain.model.FileItem
+import com.metao.ai.data.repository.CategorizationStateRepository
 import com.metao.ai.domain.model.CategorizationResult
 import com.metao.ai.domain.model.FileCategory
-import com.metao.ai.domain.usecase.ScanDirectoryUseCase
+import com.metao.ai.domain.model.FileItem
 import com.metao.ai.domain.usecase.CategorizeFileUseCase
-import com.metao.ai.data.repository.CategorizationStateRepository
+import com.metao.ai.domain.usecase.ScanDirectoryUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 
 class FileProcessingService : Service() {
 

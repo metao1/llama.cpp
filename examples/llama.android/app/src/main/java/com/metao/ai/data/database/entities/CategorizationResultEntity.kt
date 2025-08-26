@@ -8,9 +8,7 @@ import com.metao.ai.domain.model.CategorizationResult
 import com.metao.ai.domain.model.FileCategory
 import com.metao.ai.domain.model.FileItem
 import com.metao.ai.domain.model.FileType
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.Date
