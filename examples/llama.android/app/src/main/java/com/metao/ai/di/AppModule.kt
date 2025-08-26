@@ -27,7 +27,6 @@ import com.metao.ai.domain.usecase.LoadModelUseCase
 import com.metao.ai.domain.usecase.ScanDirectoryUseCase
 import com.metao.ai.domain.usecase.CategorizeFileUseCase
 import com.metao.ai.domain.usecase.MoveFilesUseCase
-import com.metao.ai.presentation.chat.ChatViewModel
 import com.metao.ai.presentation.models.ModelsViewModel
 import com.metao.ai.presentation.categorize.FileCategorizeViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -90,7 +89,6 @@ val appModule = module {
     single { MoveFilesUseCase(get()) }
 
     // ViewModels
-    viewModel { ChatViewModel(get(), get(), get(), get()) }
     viewModel { ModelsViewModel(get(), get(), get(), get(), get()) }
     viewModel { FileCategorizeViewModel(get(), get(), get(), get(), get()) }
     viewModel { FileWatcherSettingsViewModel(get(), get()) }
