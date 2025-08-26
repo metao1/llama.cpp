@@ -55,7 +55,8 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileCategorizeScreen(
-    modifier: Modifier = Modifier, viewModel: FileCategorizeViewModel = koinViewModel()
+    modifier: Modifier = Modifier,
+    viewModel: FileCategorizeViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -65,24 +66,25 @@ fun FileCategorizeScreen(
     }
 
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+        modifier =
+            modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
     ) {
         // Header
         Text(
             text = "File Categorizer",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 16.dp),
         )
 
         // Directory Selection
         DirectorySelectionCard(
             selectedDirectory = uiState.selectedDirectory,
             onDirectorySelected = viewModel::selectDirectory,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 16.dp),
         )
 
         // Action Buttons
@@ -95,7 +97,7 @@ fun FileCategorizeScreen(
             onDeselectAll = viewModel::deselectAllMoveOperations,
             onExecuteMove = viewModel::executeMoveOperations,
             onReset = viewModel::resetCategorization,
-            modifier = Modifier.padding(bottom = 2.dp)
+            modifier = Modifier.padding(bottom = 2.dp),
         )
 
         // Content based on state
@@ -104,24 +106,27 @@ fun FileCategorizeScreen(
                 MoveOperationsList(
                     operations = uiState.moveOperations,
                     onToggleOperation = viewModel::toggleMoveOperation,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
             uiState.moveReport != null -> {
                 MoveReportDisplay(
                     report = uiState.moveReport!!,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
             uiState.categorizationState is CategorizationState.Idle -> {
                 if (uiState.scannedFiles.isNotEmpty()) {
                     ScannedFilesList(
-                        files = uiState.scannedFiles, modifier = Modifier.fillMaxWidth()
+                        files = uiState.scannedFiles,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 } else if (uiState.selectedDirectory != null) {
-                    EmptyStateMessage("No files found in '${uiState.selectedDirectory}'. Try selecting a different directory or add some files to scan.")
+                    EmptyStateMessage(
+                        "No files found in '${uiState.selectedDirectory}'. Try selecting a different directory or add some files to scan.",
+                    )
                 } else {
                     EmptyStateMessage("Select a directory and scan for files to get started")
                 }
@@ -131,17 +136,18 @@ fun FileCategorizeScreen(
                 CategorizationResultsList(
                     results = uiState.categorizationResults,
                     onConfirmResult = viewModel::confirmCategorization,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
             else -> {
                 // Show progress or other states
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
                 }
@@ -152,60 +158,61 @@ fun FileCategorizeScreen(
         StatusDisplay(
             state = uiState.categorizationState,
             scannedFilesCount = uiState.scannedFiles.size,
-            modifier = Modifier.padding(vertical = 16.dp)
+            modifier = Modifier.padding(vertical = 16.dp),
         )
 
         // Debug info
         Card(modifier = Modifier.padding(bottom = 16.dp)) {
             Column(
-                modifier = Modifier
-                    .padding(8.dp)
-                    .heightIn(max = 200.dp)
-                    .verticalScroll(rememberScrollState())
+                modifier =
+                    Modifier
+                        .padding(8.dp)
+                        .heightIn(max = 200.dp)
+                        .verticalScroll(rememberScrollState()),
             ) {
                 Text("Debug Info:", style = MaterialTheme.typography.labelMedium)
                 Text(
                     "Selected: ${uiState.selectedDirectory ?: "None"}",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
                     "State: ${uiState.categorizationState}",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
                     "Files: ${uiState.scannedFiles.size}",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
                     "Model Loaded: ${uiState.isModelLoaded}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (uiState.isModelLoaded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                    color = if (uiState.isModelLoaded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                 )
 
                 if (!uiState.isModelLoaded) {
                     Text(
                         "⚠️ Load a model from the side drawer to enable categorization",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
                     )
                 } else if (uiState.scannedFiles.isEmpty() && uiState.selectedDirectory != null) {
                     Text(
                         "💡 Press 'Scan Current' to find files in the selected directory",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 } else if (uiState.scannedFiles.isNotEmpty()) {
                     Text(
                         "✅ Ready to categorize ${uiState.scannedFiles.size} files!",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary
+                        color = MaterialTheme.colorScheme.tertiary,
                     )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(
                         onClick = {
@@ -217,14 +224,14 @@ fun FileCategorizeScreen(
                             }
                         },
                         enabled = uiState.selectedDirectory != null,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     ) {
                         Text("Create Test Files")
                     }
 
                     Button(
                         onClick = viewModel::refreshModelStatus,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     ) {
                         Text("Refresh Model Status")
                     }
@@ -235,15 +242,16 @@ fun FileCategorizeScreen(
         // Error Display
         uiState.error?.let { error ->
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
             ) {
                 Text(
                     text = error,
                     modifier = Modifier.padding(16.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    color = MaterialTheme.colorScheme.onErrorContainer,
                 )
             }
         }
@@ -251,7 +259,7 @@ fun FileCategorizeScreen(
         LaunchedEffect(uiState) {
             android.util.Log.d(
                 "FileCategorizeScreen",
-                "UI State updated: selectedDirectory=${uiState.selectedDirectory}, state=${uiState.categorizationState}, scannedFiles=${uiState.scannedFiles.size}, modelLoaded=${uiState.isModelLoaded}"
+                "UI State updated: selectedDirectory=${uiState.selectedDirectory}, state=${uiState.categorizationState}, scannedFiles=${uiState.scannedFiles.size}, modelLoaded=${uiState.isModelLoaded}",
             )
         }
     }
@@ -259,14 +267,16 @@ fun FileCategorizeScreen(
 
 @Composable
 private fun DirectorySelectionCard(
-    selectedDirectory: String?, onDirectorySelected: (String) -> Unit, modifier: Modifier = Modifier
+    selectedDirectory: String?,
+    onDirectorySelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Selected Directory",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -275,13 +285,13 @@ private fun DirectorySelectionCard(
                     text = selectedDirectory,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             } else {
                 Text(
                     text = "No directory selected",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -290,27 +300,34 @@ private fun DirectorySelectionCard(
             Button(
                 onClick = {
                     // Try multiple directories to find one with files
-                    val directories = listOf(
-                        "/storage/emulated/0/Download",
-                        "/storage/emulated/0/Documents",
-                        "/storage/emulated/0/Pictures",
-                        "/storage/emulated/0/DCIM",
-                        "/storage/emulated/0/DCIM/Camera",
-                        "/storage/emulated/0/Pictures/Screenshots",
-                        "/storage/emulated/0"
-                    )
+                    val directories =
+                        listOf(
+                            "/storage/emulated/0/Download",
+                            "/storage/emulated/0/Documents",
+                            "/storage/emulated/0/Pictures",
+                            "/storage/emulated/0/DCIM",
+                            "/storage/emulated/0/DCIM/Camera",
+                            "/storage/emulated/0/Pictures/Screenshots",
+                            "/storage/emulated/0",
+                        )
 
                     // Find directory with files, or fallback to first existing directory
-                    val dirWithFiles = directories.find { path ->
-                        val dir = java.io.File(path)
-                        dir.exists() && dir.isDirectory && (dir.listFiles()
-                            ?.any { it.isFile } == true)
-                    }
+                    val dirWithFiles =
+                        directories.find { path ->
+                            val dir = java.io.File(path)
+                            dir.exists() && dir.isDirectory && (
+                                dir
+                                    .listFiles()
+                                    ?.any { it.isFile } == true
+                            )
+                        }
 
-                    val selectedDir = dirWithFiles ?: directories.find { java.io.File(it).exists() }
-                    ?: directories.first()
+                    val selectedDir =
+                        dirWithFiles ?: directories.find { java.io.File(it).exists() }
+                            ?: directories.first()
                     onDirectorySelected(selectedDir)
-                }, modifier = Modifier.fillMaxWidth()
+                },
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -330,13 +347,13 @@ private fun ActionButtonsRow(
     onDeselectAll: () -> Unit,
     onExecuteMove: () -> Unit,
     onReset: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         // First row - Scanning buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Button(
                 onClick = {
@@ -344,7 +361,7 @@ private fun ActionButtonsRow(
                     onScanDirectory()
                 },
                 enabled = !uiState.selectedDirectory.isNullOrEmpty(),
-                modifier = Modifier.fillMaxWidth(0.48f)
+                modifier = Modifier.fillMaxWidth(0.48f),
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
@@ -364,11 +381,13 @@ private fun ActionButtonsRow(
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Button(
                     onClick = onCategorizeFiles,
-                    enabled = uiState.scannedFiles.isNotEmpty() && uiState.categorizationState == CategorizationState.Idle && uiState.isModelLoaded,
+                    enabled =
+                        uiState.scannedFiles.isNotEmpty() && uiState.categorizationState == CategorizationState.Idle &&
+                            uiState.isModelLoaded,
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
@@ -378,7 +397,7 @@ private fun ActionButtonsRow(
                             uiState.scannedFiles.isEmpty() -> "Scan Files First"
                             uiState.categorizationState != CategorizationState.Idle -> "Processing..."
                             else -> "Categorize"
-                        }
+                        },
                     )
                 }
             }
@@ -388,11 +407,11 @@ private fun ActionButtonsRow(
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(
                         onClick = onSelectAll,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -401,7 +420,7 @@ private fun ActionButtonsRow(
 
                     Button(
                         onClick = onDeselectAll,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     ) {
                         Text("Deselect All")
                     }
@@ -420,14 +439,12 @@ private fun ActionButtonsRow(
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = onReset,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Reset")
                 }
             }
         }
-
-
     }
 }
 
@@ -435,7 +452,7 @@ private fun ActionButtonsRow(
 private fun StatusDisplay(
     state: CategorizationState,
     scannedFilesCount: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -451,7 +468,7 @@ private fun StatusDisplay(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 "Scanning directories...",
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
                             )
                         }
                         if (scannedFilesCount > 0) {
@@ -459,7 +476,7 @@ private fun StatusDisplay(
                             Text(
                                 "Found $scannedFilesCount files so far...",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -470,14 +487,15 @@ private fun StatusDisplay(
                         Text("Categorizing files...", style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(4.dp))
                         LinearProgressIndicator(
-                            progress = state.progress, modifier = Modifier.fillMaxWidth()
+                            progress = state.progress,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Processing: ${state.currentFile}",
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -487,14 +505,15 @@ private fun StatusDisplay(
                         Text("Moving files...", style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(4.dp))
                         LinearProgressIndicator(
-                            progress = state.progress, modifier = Modifier.fillMaxWidth()
+                            progress = state.progress,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Moving: ${state.currentFile}",
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -503,7 +522,7 @@ private fun StatusDisplay(
                     Text(
                         "Categorization complete! Review and confirm results below.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
 
@@ -511,7 +530,7 @@ private fun StatusDisplay(
                     Text(
                         "Files moved successfully!",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
 
@@ -519,7 +538,7 @@ private fun StatusDisplay(
                     Text(
                         "Error: ${state.error}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }
@@ -529,22 +548,25 @@ private fun StatusDisplay(
 
 @Composable
 private fun EmptyStateMessage(
-    message: String, modifier: Modifier = Modifier
+    message: String,
+    modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
 @Composable
 private fun ScannedFilesList(
-    files: List<FileItem>, modifier: Modifier = Modifier
+    files: List<FileItem>,
+    modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -552,45 +574,50 @@ private fun ScannedFilesList(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = "Scanned Files (${files.size})",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
                 )
 
                 // File type summary
                 val fileTypeCounts = files.groupBy { it.fileType }.mapValues { it.value.size }
                 Text(
-                    text = fileTypeCounts.entries.take(3)
-                        .joinToString(", ") { "${it.value} ${it.key.displayName}" },
+                    text =
+                        fileTypeCounts.entries
+                            .take(3)
+                            .joinToString(", ") { "${it.value} ${it.key.displayName}" },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Column(modifier = Modifier.heightIn(max = 300.dp)) {
-                files.take(100).forEach { file -> // Limit display to first 100 files for performance
+                files.take(100).forEach { file ->
+                    // Limit display to first 100 files for performance
                     FileItemCard(
-                        fileItem = file, modifier = Modifier.padding(vertical = 2.dp)
+                        fileItem = file,
+                        modifier = Modifier.padding(vertical = 2.dp),
                     )
                 }
 
                 if (files.size > 100) {
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                     ) {
                         Text(
                             text = "... and ${files.size - 100} more files",
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
                 }
@@ -603,7 +630,7 @@ private fun ScannedFilesList(
 private fun CategorizationResultsList(
     results: List<CategorizationResult>,
     onConfirmResult: (Int, Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -611,7 +638,7 @@ private fun CategorizationResultsList(
                 text = "Categorization Results (${results.size})",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp),
             )
 
             Column {
@@ -619,7 +646,7 @@ private fun CategorizationResultsList(
                     CategorizationResultCard(
                         result = result,
                         onConfirm = { confirmed -> onConfirmResult(index, confirmed) },
-                        modifier = Modifier.padding(vertical = 4.dp)
+                        modifier = Modifier.padding(vertical = 4.dp),
                     )
                 }
             }
@@ -629,11 +656,12 @@ private fun CategorizationResultsList(
 
 @Composable
 private fun FileItemCard(
-    fileItem: FileItem, modifier: Modifier = Modifier
+    fileItem: FileItem,
+    modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -641,20 +669,20 @@ private fun FileItemCard(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Row {
                 Text(
                     text = fileItem.fileType.displayName,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = fileItem.sizeFormatted,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -663,19 +691,27 @@ private fun FileItemCard(
 
 @Composable
 private fun CategorizationResultCard(
-    result: CategorizationResult, onConfirm: (Boolean) -> Unit, modifier: Modifier = Modifier
+    result: CategorizationResult,
+    onConfirm: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
-            containerColor = if (result.isConfirmed) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceVariant
-        )
+        modifier = modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (result.isConfirmed) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
+            ),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.Top,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -683,19 +719,19 @@ private fun CategorizationResultCard(
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "→ ${result.suggestedCategory.name}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
                     )
                     Text(
                         text = "Confidence: ${(result.confidence * 100).toInt()}%",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (result.reasoning.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(4.dp))
@@ -704,13 +740,14 @@ private fun CategorizationResultCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
 
                 Checkbox(
-                    checked = result.isConfirmed, onCheckedChange = onConfirm
+                    checked = result.isConfirmed,
+                    onCheckedChange = onConfirm,
                 )
             }
         }
@@ -723,15 +760,17 @@ private fun createTestFiles(directoryPath: String) {
         if (!directory.exists()) directory.mkdirs()
 
         // Create some test files with different types and names
-        val testFiles = listOf(
-            "receipt_grocery_store.txt" to "Grocery Store Receipt\nDate: 2024-01-15\nTotal: $45.67\nItems: Milk, Bread, Eggs",
-            "work_meeting_notes.txt" to "Meeting Notes - Project Planning\nDate: 2024-01-10\nAttendees: John, Sarah, Mike\nAction items: Review budget, Schedule follow-up",
-            "passport_copy.txt" to "Passport Information\nDocument Type: Passport\nIssue Date: 2020-05-15\nExpiry Date: 2030-05-15",
-            "vacation_photos_list.txt" to "Vacation Photos\nLocation: Hawaii\nDate: Summer 2023\nPhotos: Beach, Sunset, Hiking",
-            "software_installer.txt" to "Downloaded Software\nFile: setup.exe\nVersion: 2.1.4\nSize: 150MB",
-            "music_playlist.txt" to "My Favorite Songs\nGenre: Rock\nArtist: Various\nTotal: 25 songs",
-            "old_temp_file.txt" to "Temporary file\nCreated: 2023-01-01\nStatus: Can be deleted"
-        )
+        val testFiles =
+            listOf(
+                "receipt_grocery_store.txt" to "Grocery Store Receipt\nDate: 2024-01-15\nTotal: $45.67\nItems: Milk, Bread, Eggs",
+                "work_meeting_notes.txt" to
+                    "Meeting Notes - Project Planning\nDate: 2024-01-10\nAttendees: John, Sarah, Mike\nAction items: Review budget, Schedule follow-up",
+                "passport_copy.txt" to "Passport Information\nDocument Type: Passport\nIssue Date: 2020-05-15\nExpiry Date: 2030-05-15",
+                "vacation_photos_list.txt" to "Vacation Photos\nLocation: Hawaii\nDate: Summer 2023\nPhotos: Beach, Sunset, Hiking",
+                "software_installer.txt" to "Downloaded Software\nFile: setup.exe\nVersion: 2.1.4\nSize: 150MB",
+                "music_playlist.txt" to "My Favorite Songs\nGenre: Rock\nArtist: Various\nTotal: 25 songs",
+                "old_temp_file.txt" to "Temporary file\nCreated: 2023-01-01\nStatus: Can be deleted",
+            )
 
         testFiles.forEach { (filename, content) ->
             val file = java.io.File(directory, filename)
@@ -742,7 +781,7 @@ private fun createTestFiles(directoryPath: String) {
 
         android.util.Log.d(
             "FileCategorizeScreen",
-            "Created ${testFiles.size} test files in $directoryPath"
+            "Created ${testFiles.size} test files in $directoryPath",
         )
     } catch (e: Exception) {
         android.util.Log.e("FileCategorizeScreen", "Error creating test files", e)
@@ -753,7 +792,7 @@ private fun createTestFiles(directoryPath: String) {
 private fun MoveOperationsList(
     operations: List<MoveOperation>,
     onToggleOperation: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var isExpanded by remember { mutableStateOf(true) }
 
@@ -761,30 +800,31 @@ private fun MoveOperationsList(
         Column(modifier = Modifier.padding(16.dp)) {
             // Header with summary and expand/collapse
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { isExpanded = !isExpanded },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { isExpanded = !isExpanded },
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column {
                     Text(
                         text = "Move Operations",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                     val selectedCount = operations.count { it.isSelected }
                     Text(
                         text = "$selectedCount/${operations.size} selected",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -795,38 +835,42 @@ private fun MoveOperationsList(
                 val groupedOperations = operations.groupBy { it.categoryName }
 
                 Column(
-                    modifier = Modifier.heightIn(
-                        min = 200.dp,
-                        max = 600.dp
-                    )
+                    modifier =
+                        Modifier.heightIn(
+                            min = 200.dp,
+                            max = 600.dp,
+                        ),
                 ) {
                     groupedOperations.forEach { (categoryName, categoryOperations) ->
                         // Category header
                         Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                ),
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
                                     text = categoryName,
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 )
                                 Text(
                                     text = "${categoryOperations.count { it.isSelected }}/${categoryOperations.size}",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 )
                             }
                         }
@@ -838,7 +882,7 @@ private fun MoveOperationsList(
                             MoveOperationCard(
                                 operation = operation,
                                 onToggle = { onToggleOperation(globalIndex) },
-                                modifier = Modifier.padding(vertical = 2.dp, horizontal = 8.dp)
+                                modifier = Modifier.padding(vertical = 2.dp, horizontal = 8.dp),
                             )
                         }
                     }
@@ -852,23 +896,27 @@ private fun MoveOperationsList(
 private fun MoveOperationCard(
     operation: MoveOperation,
     onToggle: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (operation.isSelected)
-                MaterialTheme.colorScheme.secondaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceVariant
-        )
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (operation.isSelected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
+            ),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -876,24 +924,24 @@ private fun MoveOperationCard(
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "→ ${operation.categoryName}/",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
                     text = operation.fileItem.sizeFormatted,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
             Checkbox(
                 checked = operation.isSelected,
-                onCheckedChange = { onToggle() }
+                onCheckedChange = { onToggle() },
             )
         }
     }
@@ -902,7 +950,7 @@ private fun MoveOperationCard(
 @Composable
 private fun MoveReportDisplay(
     report: MoveReport,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -910,28 +958,28 @@ private fun MoveReportDisplay(
                 text = "Move Operation Report",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 16.dp),
             )
 
             // Summary stats
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 ReportStatCard(
                     title = "Total",
                     value = report.totalOperations.toString(),
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 ReportStatCard(
                     title = "Success",
                     value = report.successfulMoves.toString(),
-                    color = MaterialTheme.colorScheme.tertiary
+                    color = MaterialTheme.colorScheme.tertiary,
                 )
                 ReportStatCard(
                     title = "Failed",
                     value = report.failedMoves.toString(),
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.error,
                 )
             }
 
@@ -941,7 +989,7 @@ private fun MoveReportDisplay(
             Text(
                 text = "Duration: ${report.duration}ms",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             // Created directories
@@ -950,14 +998,14 @@ private fun MoveReportDisplay(
                 Text(
                     text = "Created Directories:",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
                 )
                 report.createdDirectories.forEach { dir ->
                     Text(
                         text = "• $dir",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 8.dp)
+                        modifier = Modifier.padding(start = 8.dp),
                     )
                 }
             }
@@ -969,7 +1017,7 @@ private fun MoveReportDisplay(
                     text = "Errors:",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.error,
                 )
                 Column(modifier = Modifier.heightIn(max = 150.dp)) {
                     report.errors.forEach { error ->
@@ -977,7 +1025,7 @@ private fun MoveReportDisplay(
                             text = "• $error",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(6.dp)
+                            modifier = Modifier.padding(6.dp),
                         )
                     }
                 }
@@ -991,26 +1039,26 @@ private fun ReportStatCard(
     title: String,
     value: String,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = value,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = color
+                color = color,
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
-                color = color
+                color = color,
             )
         }
     }

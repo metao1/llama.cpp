@@ -11,5 +11,5 @@ data class ModelInfo(
     val destinationFile: File,
     val sizeBytes: Long,
     val isDownloaded: Boolean = false,
-    val isLoaded: Boolean = false
+    val isLoaded: Boolean = false,
 )

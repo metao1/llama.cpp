@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 class FileWatcherManager(
     private val context: Context,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
 ) {
     companion object {
         private const val TAG = "FileWatcherManager"
@@ -32,7 +32,7 @@ class FileWatcherManager(
         scope.launch {
             combine(
                 settingsRepository.getFileWatchingEnabledFlow(),
-                settingsRepository.getWatchedDirectoriesFlow()
+                settingsRepository.getWatchedDirectoriesFlow(),
             ) { enabled, directories ->
                 Pair(enabled, directories)
             }.collect { (enabled, directories) ->
@@ -61,15 +61,14 @@ class FileWatcherManager(
         settingsRepository.removeWatchedDirectory(path)
     }
 
-    suspend fun isFileWatchingEnabled(): Boolean {
-        return settingsRepository.isFileWatchingEnabled()
-    }
+    suspend fun isFileWatchingEnabled(): Boolean = settingsRepository.isFileWatchingEnabled()
 
-    suspend fun getWatchedDirectories(): List<String> {
-        return settingsRepository.getWatchedDirectories()
-    }
+    suspend fun getWatchedDirectories(): List<String> = settingsRepository.getWatchedDirectories()
 
-    private fun updateFileWatchingService(enabled: Boolean, directories: List<String>) {
+    private fun updateFileWatchingService(
+        enabled: Boolean,
+        directories: List<String>,
+    ) {
         Log.d(TAG, "Updating file watching service: enabled=$enabled, directories=${directories.size}")
 
         if (enabled && directories.isNotEmpty()) {
@@ -87,8 +86,6 @@ class FileWatcherManager(
             }
         }
     }
-
-
 
     fun onDestroy() {
         if (isServiceRunning) {

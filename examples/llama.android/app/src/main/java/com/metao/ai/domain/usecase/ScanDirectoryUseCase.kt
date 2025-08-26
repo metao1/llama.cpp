@@ -6,16 +6,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 
 class ScanDirectoryUseCase(
-    private val fileRepository: FileRepository
+    private val fileRepository: FileRepository,
 ) {
     suspend operator fun invoke(
         directoryPath: String,
         includeSubdirectories: Boolean = false,
-        maxFileSizeForContent: Long = 1024 * 1024 // 1MB
-    ): Flow<List<FileItem>> {
-        return fileRepository.scanDirectory(directoryPath, includeSubdirectories, maxFileSizeForContent)
+        maxFileSizeForContent: Long = 1024 * 1024, // 1MB
+    ): Flow<List<FileItem>> =
+        fileRepository
+            .scanDirectory(directoryPath, includeSubdirectories, maxFileSizeForContent)
             .catch { throwable ->
                 emit(emptyList())
             }
-    }
 }

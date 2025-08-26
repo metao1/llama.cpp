@@ -15,30 +15,31 @@ import com.metao.ai.data.database.entities.MoveOperationEntity
     entities = [
         CategorizationResultEntity::class,
         CategorizationSessionEntity::class,
-        MoveOperationEntity::class
+        MoveOperationEntity::class,
     ],
     version = 1,
-    exportSchema = false
+    exportSchema = false,
 )
 @TypeConverters(CategorizationResultConverters::class)
 abstract class CategorizationDatabase : RoomDatabase() {
     abstract fun categorizationDao(): CategorizationDao
+
     companion object {
         @Volatile
         private var INSTANCE: CategorizationDatabase? = null
 
-        fun getDatabase(context: Context): CategorizationDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    CategorizationDatabase::class.java,
-                    "categorization_database"
-                )
-                .fallbackToDestructiveMigration()
-                .build()
+        fun getDatabase(context: Context): CategorizationDatabase =
+            INSTANCE ?: synchronized(this) {
+                val instance =
+                    Room
+                        .databaseBuilder(
+                            context.applicationContext,
+                            CategorizationDatabase::class.java,
+                            "categorization_database",
+                        ).fallbackToDestructiveMigration()
+                        .build()
                 INSTANCE = instance
                 instance
             }
-        }
     }
 }

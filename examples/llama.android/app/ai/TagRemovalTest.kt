@@ -1,13 +1,10 @@
 package com.metao.ai
 
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 
 class TagRemovalTest {
-
-    private fun removeTags(input: String): String {
-        return input.replace(Regex("<\\w*[^>]*>?"), "")
-    }
+    private fun removeTags(input: String): String = input.replace(Regex("<\\w*[^>]*>?"), "")
 
     @Test
     fun testRemoveSingleTag() {
@@ -20,6 +17,7 @@ class TagRemovalTest {
     fun testRemoveOnlyTag() {
         val input = "<"
         val expected = ""
+
         fun String.removeSpaces() = replace(Regex("\\s+"), "")
         assertEquals(expected, removeTags(input))
     }

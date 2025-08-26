@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ModelDao {
-
     @Query("SELECT * FROM models ORDER BY dateAdded DESC")
     fun getAllModels(): Flow<List<ModelEntity>>
 
@@ -33,7 +32,10 @@ interface ModelDao {
     suspend fun updateModel(model: ModelEntity)
 
     @Query("UPDATE models SET isDownloaded = :isDownloaded WHERE id = :modelId")
-    suspend fun updateDownloadStatus(modelId: String, isDownloaded: Boolean)
+    suspend fun updateDownloadStatus(
+        modelId: String,
+        isDownloaded: Boolean,
+    )
 
     @Delete
     suspend fun deleteModel(model: ModelEntity)

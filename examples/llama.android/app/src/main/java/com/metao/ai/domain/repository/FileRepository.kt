@@ -8,20 +8,22 @@ import com.metao.ai.domain.usecase.MoveFileProgress
 import kotlinx.coroutines.flow.Flow
 
 interface FileRepository {
-
     /**
      * Scan a directory and return file items with metadata
      */
     suspend fun scanDirectory(
         directoryPath: String,
         includeSubdirectories: Boolean = false,
-        maxFileSizeForContent: Long = 1024 * 1024
+        maxFileSizeForContent: Long = 1024 * 1024,
     ): Flow<List<FileItem>>
 
     /**
      * Extract metadata and content preview from a file
      */
-    suspend fun getFileMetadata(filePath: String, maxContentSize: Long = 1024 * 1024): FileItem?
+    suspend fun getFileMetadata(
+        filePath: String,
+        maxContentSize: Long = 1024 * 1024,
+    ): FileItem?
 
     /**
      * Categorize a single file using LLM
@@ -29,7 +31,7 @@ interface FileRepository {
     suspend fun categorizeFile(
         fileItem: FileItem,
         availableCategories: List<FileCategory>,
-        generateTextUseCase: GenerateTextUseCase
+        generateTextUseCase: GenerateTextUseCase,
     ): Flow<CategorizationResult>
 
     /**
@@ -37,7 +39,7 @@ interface FileRepository {
      */
     suspend fun moveFiles(
         results: List<CategorizationResult>,
-        baseDirectory: String
+        baseDirectory: String,
     ): Flow<MoveFileProgress>
 
     /**
@@ -45,7 +47,7 @@ interface FileRepository {
      */
     suspend fun createCategoryFolders(
         categories: List<FileCategory>,
-        baseDirectory: String
+        baseDirectory: String,
     ): Boolean
 
     /**

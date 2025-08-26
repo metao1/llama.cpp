@@ -7,12 +7,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 
 class DownloadModelUseCase(
-    private val repository: ModelRepository
+    private val repository: ModelRepository,
 ) {
-    suspend operator fun invoke(modelInfo: ModelInfo): Flow<DownloadState> {
-        return repository.downloadModel(modelInfo)
+    suspend operator fun invoke(modelInfo: ModelInfo): Flow<DownloadState> =
+        repository
+            .downloadModel(modelInfo)
             .catch { throwable ->
                 emit(DownloadState.Failed(throwable.message ?: "Unknown download error"))
             }
-    }
 }

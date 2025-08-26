@@ -56,14 +56,13 @@ data class FileWatcherSettingsUiState(
     val isFileWatchingEnabled: Boolean = false,
     val isAutoCategorizationEnabled: Boolean = true,
     val watchedDirectories: List<String> = emptyList(),
-    val showAddDirectoryDialog: Boolean = false
+    val showAddDirectoryDialog: Boolean = false,
 )
 
 class FileWatcherSettingsViewModel(
     private val fileWatcherManager: FileWatcherManager,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
-
     companion object {
         private const val TAG = "FileWatcherSettingsVM"
     }
@@ -77,7 +76,7 @@ class FileWatcherSettingsViewModel(
             combine(
                 settingsRepository.getFileWatchingEnabledFlow(),
                 settingsRepository.getWatchedDirectoriesFlow(),
-                flow { emit(settingsRepository.isAutoCategorizationEnabled()) }
+                flow { emit(settingsRepository.isAutoCategorizationEnabled()) },
             ) { enabled, directories, autoEnabled ->
                 Triple(enabled, directories, autoEnabled)
             }.collect { (enabled, directories, autoEnabled) ->
@@ -85,7 +84,7 @@ class FileWatcherSettingsViewModel(
                     it.copy(
                         isFileWatchingEnabled = enabled,
                         watchedDirectories = directories,
-                        isAutoCategorizationEnabled = autoEnabled
+                        isAutoCategorizationEnabled = autoEnabled,
                     )
                 }
             }
@@ -155,51 +154,53 @@ class FileWatcherSettingsViewModel(
 @Composable
 fun FileWatcherSettingsScreen(
     modifier: Modifier = Modifier,
-    viewModel: FileWatcherSettingsViewModel = koinViewModel()
+    viewModel: FileWatcherSettingsViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+        modifier =
+            modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
     ) {
         Text(
             text = "File Monitoring Settings",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 24.dp),
         )
 
         // Enable/Disable File Watching
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Auto File Monitoring",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
                         )
                         Text(
                             text = "Automatically detect new files and suggest categorization",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
 
                     Switch(
                         checked = uiState.isFileWatchingEnabled,
-                        onCheckedChange = { viewModel.toggleFileWatching() }
+                        onCheckedChange = { viewModel.toggleFileWatching() },
                     )
                 }
 
@@ -208,15 +209,15 @@ fun FileWatcherSettingsScreen(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = "Auto Categorization",
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                         Switch(
                             checked = uiState.isAutoCategorizationEnabled,
-                            onCheckedChange = { viewModel.toggleAutoCategorizationEnabled() }
+                            onCheckedChange = { viewModel.toggleAutoCategorizationEnabled() },
                         )
                     }
                 }
@@ -230,12 +231,12 @@ fun FileWatcherSettingsScreen(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = "Watched Directories",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
                         )
 
                         IconButton(onClick = viewModel::showAddDirectoryDialog) {
@@ -247,7 +248,7 @@ fun FileWatcherSettingsScreen(
                         text = "Directories being monitored for new files",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp),
                     )
 
                     if (uiState.watchedDirectories.isEmpty()) {
@@ -255,17 +256,17 @@ fun FileWatcherSettingsScreen(
                             text = "No directories being watched",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 16.dp)
+                            modifier = Modifier.padding(vertical = 16.dp),
                         )
                     } else {
                         Column(
                             modifier = Modifier.heightIn(max = 300.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             uiState.watchedDirectories.forEach { directory ->
                                 WatchedDirectoryItem(
                                     directory = directory,
-                                    onRemove = { viewModel.removeWatchedDirectory(directory) }
+                                    onRemove = { viewModel.removeWatchedDirectory(directory) },
                                 )
                             }
                         }
@@ -279,20 +280,21 @@ fun FileWatcherSettingsScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    ),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "📱 Service Status",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
                     )
                     Text(
                         text = "File monitoring is active. You'll receive notifications when new files are detected.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
             }
@@ -303,7 +305,7 @@ fun FileWatcherSettingsScreen(
     if (uiState.showAddDirectoryDialog) {
         AddDirectoryDialog(
             onDismiss = viewModel::hideAddDirectoryDialog,
-            onAddDirectory = viewModel::addWatchedDirectory
+            onAddDirectory = viewModel::addWatchedDirectory,
         )
     }
 }
@@ -312,48 +314,50 @@ fun FileWatcherSettingsScreen(
 private fun WatchedDirectoryItem(
     directory: String,
     onRemove: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
                 Icon(
                     Icons.Default.Star,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = directory,
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
             }
 
             IconButton(
                 onClick = onRemove,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(32.dp),
             ) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Remove",
                     tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
@@ -363,7 +367,7 @@ private fun WatchedDirectoryItem(
 @Composable
 private fun AddDirectoryDialog(
     onDismiss: () -> Unit,
-    onAddDirectory: (String) -> Unit
+    onAddDirectory: (String) -> Unit,
 ) {
     var directoryPath by remember { mutableStateOf("") }
 
@@ -374,14 +378,14 @@ private fun AddDirectoryDialog(
             Column {
                 Text(
                     text = "Enter the full path of the directory to monitor:",
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
                 OutlinedTextField(
                     value = directoryPath,
                     onValueChange = { directoryPath = it },
                     label = { Text("Directory Path") },
                     placeholder = { Text("/storage/emulated/0/Download") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         },
@@ -392,7 +396,7 @@ private fun AddDirectoryDialog(
                         onAddDirectory(directoryPath.trim())
                         onDismiss()
                     }
-                }
+                },
             ) {
                 Text("Add")
             }
@@ -401,6 +405,6 @@ private fun AddDirectoryDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
     )
 }

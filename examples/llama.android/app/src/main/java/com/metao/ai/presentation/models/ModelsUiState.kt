@@ -10,5 +10,5 @@ data class ModelsUiState(
     val loadStates: Map<String, ModelLoadState> = emptyMap(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val loadedModelId: String? = null
+    val loadedModelId: String? = null,
 )

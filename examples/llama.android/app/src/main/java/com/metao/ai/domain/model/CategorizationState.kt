@@ -2,12 +2,28 @@ package com.metao.ai.domain.model
 
 sealed class CategorizationState {
     object Idle : CategorizationState()
+
     object ScanningDirectory : CategorizationState()
-    data class CategorizingFiles(val progress: Float, val currentFile: String) : CategorizationState()
-    data class CategorizationComplete(val results: List<CategorizationResult>) : CategorizationState()
-    data class MovingFiles(val progress: Float, val currentFile: String) : CategorizationState()
+
+    data class CategorizingFiles(
+        val progress: Float,
+        val currentFile: String,
+    ) : CategorizationState()
+
+    data class CategorizationComplete(
+        val results: List<CategorizationResult>,
+    ) : CategorizationState()
+
+    data class MovingFiles(
+        val progress: Float,
+        val currentFile: String,
+    ) : CategorizationState()
+
     object FilesMovedSuccessfully : CategorizationState()
-    data class Failed(val error: String) : CategorizationState()
+
+    data class Failed(
+        val error: String,
+    ) : CategorizationState()
 }
 
 data class CategorizationResult(
@@ -15,7 +31,7 @@ data class CategorizationResult(
     val suggestedCategory: FileCategory,
     val confidence: Float,
     val reasoning: String = "",
-    val isConfirmed: Boolean = false
+    val isConfirmed: Boolean = false,
 )
 
 data class CategorizationBatch(
@@ -24,7 +40,7 @@ data class CategorizationBatch(
     val totalFiles: Int,
     val processedFiles: Int,
     val skippedFiles: Int = 0,
-    val errorFiles: Int = 0
+    val errorFiles: Int = 0,
 )
 
 data class MoveOperation(
@@ -34,7 +50,7 @@ data class MoveOperation(
     val categoryName: String,
     val isSelected: Boolean = true,
     val confidence: Float = 0.0f,
-    val reasoning: String = ""
+    val reasoning: String = "",
 ) {
     val sourceFilePath: String get() = fromPath
     val targetDirectoryPath: String get() = toPath.substringBeforeLast("/")
@@ -48,5 +64,5 @@ data class MoveReport(
     val skippedMoves: Int,
     val createdDirectories: List<String>,
     val errors: List<String>,
-    val duration: Long
+    val duration: Long,
 )

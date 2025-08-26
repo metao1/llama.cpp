@@ -9,20 +9,27 @@ import kotlinx.coroutines.flow.asStateFlow
 
 interface SettingsRepository {
     suspend fun setFileWatchingEnabled(enabled: Boolean)
+
     suspend fun isFileWatchingEnabled(): Boolean
+
     suspend fun addWatchedDirectory(path: String)
+
     suspend fun removeWatchedDirectory(path: String)
+
     suspend fun getWatchedDirectories(): List<String>
+
     suspend fun setAutoCategorizationEnabled(enabled: Boolean)
+
     suspend fun isAutoCategorizationEnabled(): Boolean
+
     fun getWatchedDirectoriesFlow(): Flow<List<String>>
+
     fun getFileWatchingEnabledFlow(): Flow<Boolean>
 }
 
 class SettingsRepositoryImpl(
-    private val context: Context
+    private val context: Context,
 ) : SettingsRepository {
-
     companion object {
         private const val PREFS_NAME = "file_categorizer_settings"
         private const val KEY_FILE_WATCHING_ENABLED = "file_watching_enabled"
@@ -41,9 +48,7 @@ class SettingsRepositoryImpl(
         _fileWatchingEnabled.value = enabled
     }
 
-    override suspend fun isFileWatchingEnabled(): Boolean {
-        return prefs.getBoolean(KEY_FILE_WATCHING_ENABLED, false)
-    }
+    override suspend fun isFileWatchingEnabled(): Boolean = prefs.getBoolean(KEY_FILE_WATCHING_ENABLED, false)
 
     override suspend fun addWatchedDirectory(path: String) {
         val currentDirs = getWatchedDirectories().toMutableSet()
@@ -57,25 +62,17 @@ class SettingsRepositoryImpl(
         saveWatchedDirectories(currentDirs.toList())
     }
 
-    override suspend fun getWatchedDirectories(): List<String> {
-        return getWatchedDirectoriesFromPrefs()
-    }
+    override suspend fun getWatchedDirectories(): List<String> = getWatchedDirectoriesFromPrefs()
 
     override suspend fun setAutoCategorizationEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_AUTO_CATEGORIZATION_ENABLED, enabled).apply()
+        prefs.edit {putBoolean(KEY_AUTO_CATEGORIZATION_ENABLED, enabled) }
     }
 
-    override suspend fun isAutoCategorizationEnabled(): Boolean {
-        return prefs.getBoolean(KEY_AUTO_CATEGORIZATION_ENABLED, true)
-    }
+    override suspend fun isAutoCategorizationEnabled(): Boolean = prefs.getBoolean(KEY_AUTO_CATEGORIZATION_ENABLED, true)
 
-    override fun getWatchedDirectoriesFlow(): Flow<List<String>> {
-        return _watchedDirectories.asStateFlow()
-    }
+    override fun getWatchedDirectoriesFlow(): Flow<List<String>> = _watchedDirectories.asStateFlow()
 
-    override fun getFileWatchingEnabledFlow(): Flow<Boolean> {
-        return _fileWatchingEnabled.asStateFlow()
-    }
+    override fun getFileWatchingEnabledFlow(): Flow<Boolean> = _fileWatchingEnabled.asStateFlow()
 
     private fun getWatchedDirectoriesFromPrefs(): List<String> {
         val directoriesString = prefs.getString(KEY_WATCHED_DIRECTORIES, "")
@@ -86,22 +83,19 @@ class SettingsRepositoryImpl(
         }
     }
 
-    private fun getFileWatchingEnabledFromPrefs(): Boolean {
-        return prefs.getBoolean(KEY_FILE_WATCHING_ENABLED, false)
-    }
+    private fun getFileWatchingEnabledFromPrefs(): Boolean = prefs.getBoolean(KEY_FILE_WATCHING_ENABLED, false)
 
     private fun saveWatchedDirectories(directories: List<String>) {
         val directoriesString = directories.joinToString(DIRECTORY_SEPARATOR)
-        prefs.edit().putString(KEY_WATCHED_DIRECTORIES, directoriesString).apply()
+        prefs.edit { putString(KEY_WATCHED_DIRECTORIES, directoriesString) }
         _watchedDirectories.value = directories
     }
 
-    private fun getDefaultWatchedDirectories(): List<String> {
-        return listOf(
+    private fun getDefaultWatchedDirectories(): List<String> =
+        listOf(
             "/storage/emulated/0/Download",
             "/storage/emulated/0/Documents",
             "/storage/emulated/0/Pictures",
-            "/storage/emulated/0/DCIM/Camera"
+            "/storage/emulated/0/DCIM/Camera",
         ).filter { java.io.File(it).exists() }
-    }
 }

@@ -14,7 +14,7 @@ data class FileItem(
     val isDirectory: Boolean = file.isDirectory,
     val contentPreview: String? = null, // For small text files
     val suggestedCategory: String? = null,
-    val confidence: Float = 0f
+    val confidence: Float = 0f,
 ) {
     val sizeFormatted: String
         get() = formatFileSize(sizeBytes)
@@ -33,7 +33,10 @@ data class FileItem(
     }
 }
 
-enum class FileType(val displayName: String, val extensions: Set<String>) {
+enum class FileType(
+    val displayName: String,
+    val extensions: Set<String>,
+) {
     DOCUMENT("Document", setOf("pdf", "doc", "docx", "txt", "rtf", "odt")),
     IMAGE("Image", setOf("jpg", "jpeg", "png", "gif", "bmp", "webp", "svg")),
     VIDEO("Video", setOf("mp4", "avi", "mkv", "mov", "wmv", "flv", "webm")),
@@ -42,11 +45,10 @@ enum class FileType(val displayName: String, val extensions: Set<String>) {
     SPREADSHEET("Spreadsheet", setOf("xls", "xlsx", "csv", "ods")),
     PRESENTATION("Presentation", setOf("ppt", "pptx", "odp")),
     CODE("Code", setOf("java", "kt", "py", "js", "html", "css", "cpp", "c", "h")),
-    OTHER("Other", emptySet());
+    OTHER("Other", emptySet()),
+    ;
 
     companion object {
-        fun fromExtension(extension: String): FileType {
-            return FileType.entries.find { it.extensions.contains(extension.lowercase()) } ?: OTHER
-        }
+        fun fromExtension(extension: String): FileType = FileType.entries.find { it.extensions.contains(extension.lowercase()) } ?: OTHER
     }
 }

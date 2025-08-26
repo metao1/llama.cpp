@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
  */
 class BatteryOptimizedFileWatcher(
     private val context: Context,
-    private val onFilesDetected: (List<FileItem>) -> Unit
+    private val onFilesDetected: (List<FileItem>) -> Unit,
 ) {
     companion object {
         private const val TAG = "BatteryOptimizedWatcher"
@@ -73,23 +73,27 @@ class BatteryOptimizedFileWatcher(
     }
 
     private fun startMediaStoreObserver() {
-        mediaObserver = MediaStoreObserver(Handler(Looper.getMainLooper())) { uri ->
-            scope.launch {
-                handleMediaStoreChange(uri)
+        mediaObserver =
+            MediaStoreObserver(Handler(Looper.getMainLooper())) { uri ->
+                scope.launch {
+                    handleMediaStoreChange(uri)
+                }
             }
-        }
 
         // Register for different media types
-        val uris = listOf(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-            MediaStore.Files.getContentUri("external")
-        )
+        val uris =
+            listOf(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                MediaStore.Files.getContentUri("external"),
+            )
 
         uris.forEach { uri ->
             context.contentResolver.registerContentObserver(
-                uri, true, mediaObserver!!
+                uri,
+                true,
+                mediaObserver!!,
             )
         }
 
@@ -117,55 +121,57 @@ class BatteryOptimizedFileWatcher(
         val cutoffTime = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(5) // Last 5 minutes
 
         try {
-            val projection = arrayOf(
-                MediaStore.Files.FileColumns.DATA,
-                MediaStore.Files.FileColumns.DISPLAY_NAME,
-                MediaStore.Files.FileColumns.SIZE,
-                MediaStore.Files.FileColumns.DATE_ADDED,
-                MediaStore.Files.FileColumns.MIME_TYPE
-            )
+            val projection =
+                arrayOf(
+                    MediaStore.Files.FileColumns.DATA,
+                    MediaStore.Files.FileColumns.DISPLAY_NAME,
+                    MediaStore.Files.FileColumns.SIZE,
+                    MediaStore.Files.FileColumns.DATE_ADDED,
+                    MediaStore.Files.FileColumns.MIME_TYPE,
+                )
 
             val selection = "${MediaStore.Files.FileColumns.DATE_ADDED} > ?"
             val selectionArgs = arrayOf((cutoffTime / 1000).toString()) // MediaStore uses seconds
 
-            context.contentResolver.query(
-                MediaStore.Files.getContentUri("external"),
-                projection,
-                selection,
-                selectionArgs,
-                "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
-            )?.use { cursor ->
-                val dataIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
-                val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-                val sizeIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
-                val dateIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
-                val mimeIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+            context.contentResolver
+                .query(
+                    MediaStore.Files.getContentUri("external"),
+                    projection,
+                    selection,
+                    selectionArgs,
+                    "${MediaStore.Files.FileColumns.DATE_ADDED} DESC",
+                )?.use { cursor ->
+                    val dataIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+                    val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                    val sizeIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+                    val dateIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
+                    val mimeIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
 
-                while (cursor.moveToNext() && files.size < 10) { // Limit to 10 recent files
-                    val path = cursor.getString(dataIndex)
-                    val name = cursor.getString(nameIndex)
-                    val size = cursor.getLong(sizeIndex)
-                    val dateAdded = cursor.getLong(dateIndex) * 1000 // Convert to milliseconds
-                    val mimeType = cursor.getString(mimeIndex)
+                    while (cursor.moveToNext() && files.size < 10) { // Limit to 10 recent files
+                        val path = cursor.getString(dataIndex)
+                        val name = cursor.getString(nameIndex)
+                        val size = cursor.getLong(sizeIndex)
+                        val dateAdded = cursor.getLong(dateIndex) * 1000 // Convert to milliseconds
+                        val mimeType = cursor.getString(mimeIndex)
 
-                    val file = File(path)
-                    if (file.exists() && file.isFile) {
-                        files.add(
-                            FileItem(
-                                file = file,
-                                name = name ?: file.name,
-                                path = path,
-                                sizeBytes = size,
-                                extension = file.extension,
-                                mimeType = mimeType,
-                                lastModified = java.util.Date(dateAdded),
-                                isDirectory = false,
-                                contentPreview = null
+                        val file = File(path)
+                        if (file.exists() && file.isFile) {
+                            files.add(
+                                FileItem(
+                                    file = file,
+                                    name = name ?: file.name,
+                                    path = path,
+                                    sizeBytes = size,
+                                    extension = file.extension,
+                                    mimeType = mimeType,
+                                    lastModified = java.util.Date(dateAdded),
+                                    isDirectory = false,
+                                    contentPreview = null,
+                                ),
                             )
-                        )
+                        }
                     }
                 }
-            }
         } catch (e: Exception) {
             Log.e(TAG, "Error querying recent media files", e)
         }
@@ -173,7 +179,10 @@ class BatteryOptimizedFileWatcher(
         return files
     }
 
-    private fun startRecursiveFileObserver(directoryPath: String, depth: Int) {
+    private fun startRecursiveFileObserver(
+        directoryPath: String,
+        depth: Int,
+    ) {
         if (depth > MAX_DEPTH) {
             Log.w(TAG, "Max depth reached for directory: $directoryPath")
             return
@@ -186,9 +195,10 @@ class BatteryOptimizedFileWatcher(
         }
 
         try {
-            val observer = RecursiveFileObserver(directoryPath, depth) { event, path ->
-                handleFileSystemEvent(event, path, depth)
-            }
+            val observer =
+                RecursiveFileObserver(directoryPath, depth) { event, path ->
+                    handleFileSystemEvent(event, path, depth)
+                }
             observer.startWatching()
             fileObservers[directoryPath] = observer
 
@@ -205,7 +215,11 @@ class BatteryOptimizedFileWatcher(
         }
     }
 
-    private fun handleFileSystemEvent(event: Int, filePath: String, depth: Int) {
+    private fun handleFileSystemEvent(
+        event: Int,
+        filePath: String,
+        depth: Int,
+    ) {
         scope.launch {
             try {
                 val file = File(filePath)
@@ -253,8 +267,8 @@ class BatteryOptimizedFileWatcher(
         }
     }
 
-    private fun createFileItem(file: File): FileItem {
-        return FileItem(
+    private fun createFileItem(file: File): FileItem =
+        FileItem(
             file = file,
             name = file.name,
             path = file.absolutePath,
@@ -263,16 +277,17 @@ class BatteryOptimizedFileWatcher(
             mimeType = null, // Could be determined later
             lastModified = java.util.Date(file.lastModified()),
             isDirectory = false,
-            contentPreview = null
+            contentPreview = null,
         )
-    }
 
     private class MediaStoreObserver(
         handler: Handler,
-        private val onChange: (Uri) -> Unit
+        private val onChange: (Uri) -> Unit,
     ) : ContentObserver(handler) {
-
-        override fun onChange(selfChange: Boolean, uri: Uri?) {
+        override fun onChange(
+            selfChange: Boolean,
+            uri: Uri?,
+        ) {
             super.onChange(selfChange, uri)
             uri?.let { onChange(it) }
         }
@@ -285,14 +300,16 @@ class BatteryOptimizedFileWatcher(
     private class RecursiveFileObserver(
         private val path: String,
         private val depth: Int,
-        private val onEvent: (Int, String) -> Unit
+        private val onEvent: (Int, String) -> Unit,
     ) : FileObserver(path, CREATE or MOVED_TO or DELETE or MOVED_FROM) {
-
         companion object {
             private const val TAG = "RecursiveFileObserver"
         }
 
-        override fun onEvent(event: Int, fileName: String?) {
+        override fun onEvent(
+            event: Int,
+            fileName: String?,
+        ) {
             if (fileName != null && !fileName.startsWith(".")) {
                 val fullPath = "$path/$fileName"
                 Log.v(TAG, "FileObserver event: $event for $fullPath (depth: $depth)")
@@ -301,5 +318,3 @@ class BatteryOptimizedFileWatcher(
         }
     }
 }
-
-
