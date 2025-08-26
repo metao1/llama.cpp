@@ -1,8 +1,8 @@
 package com.metao.ai.domain.usecase
 
-import com.metao.ai.domain.model.FileItem
-import com.metao.ai.domain.model.FileCategory
 import com.metao.ai.domain.model.CategorizationResult
+import com.metao.ai.domain.model.FileCategory
+import com.metao.ai.domain.model.FileItem
 import com.metao.ai.domain.repository.FileRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -18,10 +18,10 @@ class CategorizeFileUseCase(
         return fileRepository.categorizeFile(fileItem, availableCategories, generateTextUseCase)
             .catch { throwable ->
                 // Return a default categorization result on error
-                val defaultCategory = availableCategories.find { it.id == "downloads" } 
+                val defaultCategory = availableCategories.find { it.id == "downloads" }
                     ?: availableCategories.firstOrNull()
                     ?: FileCategory.getDefaultCategories().first()
-                
+
                 emit(
                     CategorizationResult(
                         fileItem = fileItem,

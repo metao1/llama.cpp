@@ -1,9 +1,25 @@
 package com.metao.ai.presentation.models
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -22,7 +38,7 @@ fun AddModelDialog(
         var description by remember { mutableStateOf("") }
         var url by remember { mutableStateOf("") }
         var sizeGB by remember { mutableStateOf("") }
-        
+
         Dialog(
             onDismissRequest = onDismiss,
             properties = DialogProperties(
@@ -47,7 +63,7 @@ fun AddModelDialog(
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    
+
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
@@ -56,7 +72,7 @@ fun AddModelDialog(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
-                    
+
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
@@ -65,7 +81,7 @@ fun AddModelDialog(
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 2
                     )
-                    
+
                     OutlinedTextField(
                         value = url,
                         onValueChange = { url = it },
@@ -74,7 +90,7 @@ fun AddModelDialog(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
-                    
+
                     OutlinedTextField(
                         value = sizeGB,
                         onValueChange = { sizeGB = it },
@@ -84,7 +100,7 @@ fun AddModelDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true
                     )
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
@@ -95,9 +111,9 @@ fun AddModelDialog(
                         ) {
                             Text("Cancel")
                         }
-                        
+
                         Spacer(modifier = Modifier.width(8.dp))
-                        
+
                         Button(
                             onClick = {
                                 if (name.isNotBlank() && url.isNotBlank()) {

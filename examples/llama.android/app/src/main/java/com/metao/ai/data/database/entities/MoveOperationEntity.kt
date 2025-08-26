@@ -2,8 +2,8 @@ package com.metao.ai.data.database.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.metao.ai.domain.model.MoveOperation
 import com.metao.ai.domain.model.FileItem
+import com.metao.ai.domain.model.MoveOperation
 
 @Entity(tableName = "move_operations")
 data class MoveOperationEntity(

@@ -4,7 +4,6 @@ import com.metao.ai.domain.model.FileItem
 import com.metao.ai.domain.repository.FileRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import java.io.File
 
 class ScanDirectoryUseCase(
     private val fileRepository: FileRepository

@@ -3,9 +3,9 @@ package com.metao.ai.domain.manager
 import android.content.Context
 import android.util.Log
 import com.metao.ai.data.repository.SettingsRepository
-import com.metao.ai.service.FileProcessingService
-import com.metao.ai.service.BatteryOptimizedFileWatcher
 import com.metao.ai.domain.model.FileItem
+import com.metao.ai.service.BatteryOptimizedFileWatcher
+import com.metao.ai.service.FileProcessingService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
