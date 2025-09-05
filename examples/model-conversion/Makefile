@@ -37,6 +37,20 @@ causal-convert-model:
 	METADATA_OVERRIDE="$(METADATA_OVERRIDE)" \
 	./scripts/causal/convert-model.sh
 
+causal-convert-mm-model-bf16: OUTTYPE=bf16
+causal-convert-mm-model-bf16: MM_OUTTYPE=f16
+causal-convert-mm-model-bf16: causal-convert-mm-model
+
+causal-convert-mm-model:
+	$(call validate_model_path,causal-convert-mm-model)
+	@MODEL_NAME="$(MODEL_NAME)" OUTTYPE="$(OUTTYPE)" MODEL_PATH="$(MODEL_PATH)" \
+	METADATA_OVERRIDE="$(METADATA_OVERRIDE)" \
+	./scripts/causal/convert-model.sh
+
+	@MODEL_NAME="$(MODEL_NAME)" OUTTYPE="$(MM_OUTTYPE)" MODEL_PATH="$(MODEL_PATH)" \
+	METADATA_OVERRIDE="$(METADATA_OVERRIDE)" \
+	./scripts/causal/convert-model.sh --mmproj
+
 causal-run-original-model:
 	$(call validate_model_path,causal-run-original-model)
 	@MODEL_PATH="$(MODEL_PATH)" ./scripts/causal/run-org-model.py
@@ -49,7 +63,7 @@ causal-verify-logits: causal-run-original-model causal-run-converted-model
 	@MODEL_PATH="$(MODEL_PATH)" ./scripts/utils/check-nmse.py -m ${MODEL_PATH}
 
 causal-run-original-embeddings:
-	@./scripts/causal/run-casual-gen-embeddings-org.sh
+	@./scripts/causal/run-casual-gen-embeddings-org.py
 
 causal-run-converted-embeddings:
 	@./scripts/causal/run-converted-model-embeddings-logits.sh

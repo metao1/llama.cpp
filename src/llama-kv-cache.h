@@ -38,8 +38,8 @@ public:
         using idx_vec_t = std::vector<uint32_t>;
 
         // number of streams: ns = s1 - s0 + 1
-        llama_seq_id s0;
-        llama_seq_id s1;
+        uint32_t s0;
+        uint32_t s1;
 
         std::vector<llama_seq_id> strm; // [ns]
         std::vector<idx_vec_t>    idxs; // [ns]
@@ -89,7 +89,6 @@ public:
                      uint32_t   n_seq_max,
                      uint32_t   n_pad,
                      uint32_t   n_swa,
-               llama_swa_type   swa_type,
         const layer_filter_cb & filter,
         const  layer_reuse_cb & reuse);
 
@@ -139,10 +138,7 @@ public:
     // graph_build API
     //
 
-    uint32_t get_n_kv() const;
-
-    // TODO: temporary
-    bool get_supports_set_rows() const;
+    uint32_t get_n_kv(const slot_info & sinfo) const;
 
     // get views of the current state of the cache
     ggml_tensor * get_k(ggml_context * ctx, int32_t il, uint32_t n_kv, const slot_info & sinfo) const;
@@ -214,12 +210,6 @@ private:
 
     // env: LLAMA_KV_CACHE_DEBUG
     int debug = 0;
-
-    // env: LLAMA_SET_ROWS (temporary)
-    // ref: https://github.com/ggml-org/llama.cpp/pull/14285
-    bool supports_set_rows = true;
-
-    const llama_swa_type swa_type = LLAMA_SWA_TYPE_NONE;
 
     std::vector<ggml_context_ptr>        ctxs;
     std::vector<ggml_backend_buffer_ptr> bufs;
@@ -317,9 +307,6 @@ public:
     //
 
     uint32_t get_n_kv() const;
-
-    // TODO: temporary
-    bool get_supports_set_rows() const;
 
     // get views of the current state of the cache
     ggml_tensor * get_k(ggml_context * ctx, int32_t il) const;
