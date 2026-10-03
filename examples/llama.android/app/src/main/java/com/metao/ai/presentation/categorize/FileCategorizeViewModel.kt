@@ -14,11 +14,13 @@ import com.metao.ai.domain.model.MoveReport
 import com.metao.ai.domain.usecase.CategorizeFileUseCase
 import com.metao.ai.domain.usecase.IsModelLoadedUseCase
 import com.metao.ai.domain.usecase.ScanDirectoryUseCase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class FileCategorizeViewModel(
     private val scanDirectoryUseCase: ScanDirectoryUseCase,
@@ -50,11 +52,6 @@ class FileCategorizeViewModel(
             }
         }
 
-        // Try to restore last session
-        viewModelScope.launch {
-            restoreLastSession()
-        }
-
         // Initial check
         checkModelStatus()
     }
@@ -78,8 +75,13 @@ class FileCategorizeViewModel(
                 categorizationState = CategorizationState.Idle,
                 scannedFiles = emptyList(),
                 categorizationResults = emptyList(),
+                moveOperations = emptyList(),
+                moveReport = null,
+                showMovePreview = false,
+                error = null,
             )
         }
+        scanDirectory()
     }
 
     fun scanDirectory() {
@@ -91,7 +93,7 @@ class FileCategorizeViewModel(
             return
         }
 
-        scanDirectoryInternal(selectedDirectory, includeSubdirectories = false)
+        scanDirectoryInternal(selectedDirectory, includeSubdirectories = true)
     }
 
     fun scanAllDirectories() {
@@ -121,12 +123,43 @@ class FileCategorizeViewModel(
             }
 
             try {
-                Log.d(TAG, "Starting directory scan...")
+                Log.d(TAG, "Starting directory scan for $directoryPath...")
                 scanDirectoryUseCase(directoryPath, includeSubdirectories).collect { files ->
                     Log.d(TAG, "Received ${files.size} files from scan")
+
+                    val (initialResults, initialMoveOperations) =
+                        withContext(Dispatchers.Default) {
+                            val categories = _uiState.value.availableCategories
+                            val results =
+                                files.take(1000).map { file ->
+                                    getQuickCategorizationIfObvious(file, categories)
+                                        ?: CategorizationResult(
+                                            fileItem = file,
+                                            suggestedCategory =
+                                                categories.find { it.id == "documents" }
+                                                    ?: categories.firstOrNull()
+                                                    ?: FileCategory.getDefaultCategories().first(),
+                                            confidence = 0.5f,
+                                            reasoning = "📁 Extension mapping: ${file.fileType.displayName}",
+                                        )
+                                }
+                            val moveOps = createMoveOperations(results)
+                            Pair(results, moveOps)
+                        }
+
+                    if (initialResults.isNotEmpty()) {
+                        viewModelScope.launch(Dispatchers.IO) {
+                            saveCategorizationResults(initialResults)
+                            saveMoveOperations(initialMoveOperations)
+                        }
+                    }
+
                     _uiState.update {
                         it.copy(
                             scannedFiles = files,
+                            categorizationResults = initialResults,
+                            moveOperations = initialMoveOperations,
+                            showMovePreview = initialMoveOperations.isNotEmpty(),
                             categorizationState = CategorizationState.Idle,
                         )
                     }
@@ -181,40 +214,40 @@ class FileCategorizeViewModel(
                 }
 
                 try {
-                    // Quick rule-based pre-check for obvious cases
-                    val quickResult = getQuickCategorizationIfObvious(file, categories)
+                    val currentCategories = _uiState.value.availableCategories
+                    var fileResult: CategorizationResult? = null
 
-                    val fileResult =
-                        if (quickResult != null) {
-                            Log.d(TAG, "Quick categorized ${file.name} -> ${quickResult.suggestedCategory.name}")
-                            quickResult
-                        } else {
-                            // Use AI for complex cases
-                            var aiResult: CategorizationResult? = null
-                            categorizeFileUseCase(file, categories).collect { result ->
-                                aiResult = result
-                                Log.d(TAG, "AI categorized ${file.name} -> ${result.suggestedCategory.name} (${result.confidence})")
-                            }
-                            aiResult
+                    // Invoke Llama LLM to dynamically determine category
+                    categorizeFileUseCase(file, currentCategories).collect { result ->
+                        fileResult = result
+                        Log.d(TAG, "LLM dynamically categorized ${file.name} -> '${result.suggestedCategory.name}' (confidence=${result.confidence})")
+                    }
+
+                    // Fallback to quick rule categorization if AI did not return a result
+                    if (fileResult == null) {
+                        fileResult = getQuickCategorizationIfObvious(file, currentCategories)
+                    }
+
+                    fileResult?.let { result ->
+                        results.add(result)
+
+                        // Register dynamic category into state
+                        val updatedCategories = _uiState.value.availableCategories.toMutableList()
+                        if (updatedCategories.none { it.id == result.suggestedCategory.id }) {
+                            updatedCategories.add(result.suggestedCategory)
                         }
 
-                    fileResult?.let {
-                        results.add(it)
-
-                        // Emit intermediate results every 3 files for better UX
-                        if (results.size % 3 == 0) {
-                            _uiState.update {
-                                it.copy(
-                                    categorizationResults = results.toList(),
-                                    moveOperations = createMoveOperations(results.toList()),
-                                )
-                            }
+                        _uiState.update { state ->
+                            state.copy(
+                                availableCategories = updatedCategories,
+                                categorizationResults = results.toList(),
+                                moveOperations = createMoveOperations(results.toList()),
+                            )
                         }
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error categorizing ${file.name}", e)
-                    // Add a default result for failed categorization
-                    val defaultCategory = categories.find { it.id == "downloads" } ?: categories.first()
+                    val defaultCategory = categories.find { it.id == "documents" } ?: categories.first()
                     results.add(
                         CategorizationResult(
                             fileItem = file,
@@ -275,16 +308,41 @@ class FileCategorizeViewModel(
         }
     }
 
+    fun updateConfidenceThreshold(threshold: Float) {
+        _uiState.update { state ->
+            val updatedOperations =
+                state.moveOperations.map { operation ->
+                    operation.copy(isSelected = operation.confidence >= threshold)
+                }
+            state.copy(moveOperations = updatedOperations)
+        }
+    }
+
     private fun createMoveOperations(results: List<CategorizationResult>): List<MoveOperation> {
         val baseDirectory = _uiState.value.selectedDirectory ?: return emptyList()
 
-        return results.map { result ->
-            val categoryFolder = "$baseDirectory/${result.suggestedCategory.name}"
+        return results.mapNotNull { result ->
+            val fileParent = result.fileItem.file.parentFile?.name ?: ""
+            val categoryName = result.suggestedCategory.name
+
+            // Skip move if file is ALREADY in a folder matching its category (e.g. inside /Books and categorized as Books)
+            if (fileParent.equals(categoryName, ignoreCase = true) || fileParent.equals(result.suggestedCategory.id, ignoreCase = true)) {
+                Log.d(TAG, "File ${result.fileItem.name} is already in $categoryName folder ($fileParent). Skipping redundant move.")
+                return@mapNotNull null
+            }
+
+            val categoryFolder = "$baseDirectory/$categoryName"
+            val targetPath = "$categoryFolder/${result.fileItem.name}"
+
+            if (targetPath.equals(result.fileItem.path, ignoreCase = true)) {
+                return@mapNotNull null
+            }
+
             MoveOperation(
                 fileItem = result.fileItem,
                 fromPath = result.fileItem.path,
-                toPath = "$categoryFolder/${result.fileItem.name}",
-                categoryName = result.suggestedCategory.name,
+                toPath = targetPath,
+                categoryName = categoryName,
                 isSelected = result.confidence > 0.7f, // Auto-select high confidence suggestions
             )
         }
@@ -464,87 +522,83 @@ class FileCategorizeViewModel(
         extension: String,
         categories: List<FileCategory>,
         isInDownloads: Boolean,
-    ): CategorizationResult? =
-        when (extension) {
-            // Documents
-            "pdf" -> {
-                val targetFolder = if (isInDownloads) "Documents/PDF" else "Documents"
-                categories.find { it.id == "documents" }?.let {
-                    CategorizationResult(file, it, 0.95f, "📄 File type: PDF → $targetFolder")
-                }
-            }
+    ): CategorizationResult? {
+        val filePathLower = file.path.lowercase()
+        val fileNameLower = file.name.lowercase()
 
-            "doc", "docx", "odt", "rtf" -> {
-                val targetFolder = if (isInDownloads) "Documents/Word" else "Documents"
+        // Tier 0: Check if file is in Books directory or is an E-Book format
+        if (filePathLower.contains("/books") || extension in listOf("epub", "mobi", "azw", "azw3", "fb2", "djvu") ||
+            (extension == "pdf" && (filePathLower.contains("/books") || fileNameLower.contains("book") || fileNameLower.contains("novel") || fileNameLower.contains("guide") || fileNameLower.contains("manual") || fileNameLower.contains("edition")))) {
+            categories.find { it.id == "books" }?.let {
+                return CategorizationResult(file, it, 0.95f, "📚 Category: Books & Reading Material")
+            }
+        }
+
+        return when (extension) {
+            // Documents
+            "pdf", "doc", "docx", "odt", "rtf" -> {
                 categories.find { it.id == "documents" }?.let {
-                    CategorizationResult(file, it, 0.95f, "📄 File type: Word → $targetFolder")
+                    CategorizationResult(file, it, 0.90f, "📄 Document file: ${extension.uppercase()}")
                 }
             }
 
             "xls", "xlsx", "ods", "csv" -> {
-                val targetFolder = if (isInDownloads) "Documents/Spreadsheets" else "Documents"
                 categories.find { it.id == "documents" }?.let {
-                    CategorizationResult(file, it, 0.95f, "📊 File type: Spreadsheet → $targetFolder")
+                    CategorizationResult(file, it, 0.90f, "📊 Spreadsheet file: ${extension.uppercase()}")
                 }
             }
 
             "ppt", "pptx", "odp" -> {
-                val targetFolder = if (isInDownloads) "Documents/Presentations" else "Documents"
                 categories.find { it.id == "documents" }?.let {
-                    CategorizationResult(file, it, 0.95f, "📊 File type: Presentation → $targetFolder")
+                    CategorizationResult(file, it, 0.90f, "📊 Presentation file: ${extension.uppercase()}")
                 }
             }
 
             // Images
             "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg" -> {
-                val targetFolder = if (isInDownloads) "Pictures/Downloads" else "Pictures"
-                categories.find { it.id == "media" }?.let {
-                    CategorizationResult(file, it, 0.9f, "🖼️ File type: Image → $targetFolder")
+                categories.find { it.id == "media" || it.id == "personal" }?.let {
+                    CategorizationResult(file, it, 0.90f, "🖼️ Image file: ${extension.uppercase()}")
                 }
             }
 
             // Videos
             "mp4", "avi", "mkv", "mov", "wmv", "flv", "webm" -> {
-                val targetFolder = if (isInDownloads) "Movies/Downloads" else "Movies"
                 categories.find { it.id == "media" }?.let {
-                    CategorizationResult(file, it, 0.9f, "🎬 File type: Video → $targetFolder")
+                    CategorizationResult(file, it, 0.90f, "🎬 Video file: ${extension.uppercase()}")
                 }
             }
 
             // Audio
             "mp3", "wav", "flac", "aac", "ogg", "m4a" -> {
-                val targetFolder = if (isInDownloads) "Music/Downloads" else "Music"
                 categories.find { it.id == "media" }?.let {
-                    CategorizationResult(file, it, 0.9f, "🎵 File type: Audio → $targetFolder")
+                    CategorizationResult(file, it, 0.90f, "🎵 Audio file: ${extension.uppercase()}")
                 }
             }
 
             // Archives
             "zip", "rar", "7z", "tar", "gz", "bz2" -> {
-                val targetFolder = if (isInDownloads) "Downloads/Archives" else "Downloads"
                 categories.find { it.id == "downloads" }?.let {
-                    CategorizationResult(file, it, 0.85f, "📦 File type: Archive → $targetFolder")
+                    CategorizationResult(file, it, 0.85f, "📦 Archive file: ${extension.uppercase()}")
                 }
             }
 
             // Executables/Installers
             "exe", "msi", "dmg", "pkg", "deb", "rpm", "apk" -> {
-                val targetFolder = if (isInDownloads) "Downloads/Software" else "Downloads"
                 categories.find { it.id == "downloads" }?.let {
-                    CategorizationResult(file, it, 0.9f, "⚙️ File type: Installer → $targetFolder")
+                    CategorizationResult(file, it, 0.90f, "⚙️ Installer: ${extension.uppercase()}")
                 }
             }
 
             // Text files
             "txt", "md", "log" -> {
-                val targetFolder = if (isInDownloads) "Documents/Text" else "Documents"
                 categories.find { it.id == "documents" }?.let {
-                    CategorizationResult(file, it, 0.8f, "📝 File type: Text → $targetFolder")
+                    CategorizationResult(file, it, 0.85f, "📝 Text file: ${extension.uppercase()}")
                 }
             }
 
             else -> null
         }
+    }
 
     private fun categorizeByFilenamePatterns(
         file: FileItem,
@@ -552,6 +606,14 @@ class FileCategorizeViewModel(
         categories: List<FileCategory>,
     ): CategorizationResult? =
         when {
+            // Books & Reading
+            fileName.contains("book") || fileName.contains("novel") || fileName.contains("guide") ||
+                fileName.contains("manual") || fileName.contains("edition") || fileName.contains("volume") -> {
+                categories.find { it.id == "books" }?.let {
+                    CategorizationResult(file, it, 0.90f, "📚 Pattern: Book / Novel / Manual / Guide")
+                }
+            }
+
             // Financial documents
             fileName.contains("receipt") || fileName.contains("invoice") || fileName.contains("bill") -> {
                 categories.find { it.id == "receipts" }?.let {
@@ -586,47 +648,6 @@ class FileCategorizeViewModel(
         }
 
     // Session Management Methods
-    private suspend fun restoreLastSession() {
-        try {
-            val lastSession = stateRepository.getLastSession()
-            if (lastSession != null && !lastSession.isCompleted) {
-                Log.d(TAG, "Restoring last session: ${lastSession.sessionId}")
-                currentSessionId = lastSession.sessionId
-
-                // Restore directory selection
-                _uiState.update { it.copy(selectedDirectory = lastSession.directoryPath) }
-
-                // Restore categorization results
-                stateRepository.getCategorizationResults(lastSession.sessionId).collect { results ->
-                    if (results.isNotEmpty()) {
-                        Log.d(TAG, "Restored ${results.size} categorization results")
-                        _uiState.update {
-                            it.copy(
-                                categorizationResults = results,
-                                categorizationState = CategorizationState.CategorizationComplete(results),
-                            )
-                        }
-
-                        // Restore move operations
-                        stateRepository.getMoveOperations(lastSession.sessionId).collect { operations ->
-                            if (operations.isNotEmpty()) {
-                                Log.d(TAG, "Restored ${operations.size} move operations")
-                                _uiState.update {
-                                    it.copy(
-                                        moveOperations = operations,
-                                        showMovePreview = true,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error restoring last session", e)
-        }
-    }
-
     private suspend fun createNewSession(directoryPath: String) {
         currentSessionId = stateRepository.createSession(directoryPath)
         Log.d(TAG, "Created new session: $currentSessionId")

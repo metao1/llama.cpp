@@ -68,6 +68,15 @@ data class FileCategory(
                     isDefault = true,
                 ),
                 FileCategory(
+                    id = "books",
+                    name = "Books",
+                    description = "E-books, novels, textbooks, research papers, and reading materials",
+                    keywords = listOf("book", "ebook", "novel", "manual", "guide", "paper", "reading", "pdf", "epub", "mobi", "literature"),
+                    fileTypes = listOf(FileType.DOCUMENT),
+                    color = "#009688",
+                    isDefault = true,
+                ),
+                FileCategory(
                     id = "documents",
                     name = "Documents",
                     description = "General documents, PDFs, text files, and office files",
@@ -86,5 +95,47 @@ data class FileCategory(
                     isDefault = true,
                 ),
             )
+
+        fun fromDynamicName(
+            rawName: String,
+            description: String = "",
+        ): FileCategory {
+            val cleanName = rawName.trim().removeSurrounding("\"").removeSurrounding("'")
+            val id = cleanName.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
+
+            // Check if it maps to any known standard category definition
+            val defaultMatch =
+                getDefaultCategories().find {
+                    it.id == id || it.name.equals(cleanName, ignoreCase = true) ||
+                        it.keywords.any { kw -> cleanName.lowercase().contains(kw) }
+                }
+
+            if (defaultMatch != null) {
+                return defaultMatch.copy(
+                    name = cleanName.ifBlank { defaultMatch.name },
+                    description = description.ifBlank { defaultMatch.description },
+                )
+            }
+
+            // Generate a color for dynamic category
+            val colorHue = ((id.hashCode() and 0x7FFFFFFF) % 360).toFloat()
+            val hsv = floatArrayOf(colorHue, 0.65f, 0.85f)
+            val dynamicColorHex = String.format("#%06X", 0xFFFFFF and android.graphics.Color.HSVToColor(hsv))
+
+            val formattedName =
+                cleanName.ifBlank { "Uncategorized" }
+                    .split(" ")
+                    .joinToString(" ") { word ->
+                        word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                    }
+
+            return FileCategory(
+                id = id.ifBlank { "custom_${System.currentTimeMillis()}" },
+                name = formattedName,
+                description = description.ifBlank { "Dynamically determined category by LLM model" },
+                color = dynamicColorHex,
+                isDefault = false,
+            )
+        }
     }
 }

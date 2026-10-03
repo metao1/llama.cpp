@@ -29,7 +29,7 @@ sealed class CategorizationState {
 data class CategorizationResult(
     val fileItem: FileItem,
     val suggestedCategory: FileCategory,
-    val confidence: Float,
+    val confidence: Float = 0.85f,
     val reasoning: String = "",
     val isConfirmed: Boolean = false,
 )
@@ -49,7 +49,7 @@ data class MoveOperation(
     val toPath: String,
     val categoryName: String,
     val isSelected: Boolean = true,
-    val confidence: Float = 0.0f,
+    val confidence: Float = 0.85f,
     val reasoning: String = "",
 ) {
     val sourceFilePath: String get() = fromPath

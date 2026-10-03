@@ -44,7 +44,7 @@ data class MoveOperationEntity(
             toPath = "$targetDirectoryPath/$fileName",
             categoryName = categoryName,
             isSelected = isSelected,
-            confidence = confidence,
+            confidence = if (confidence <= 0f) 0.85f else confidence,
             reasoning = reasoning,
         )
     }

@@ -141,13 +141,14 @@ class LLamaAndroid {
     fun send(
         message: String,
         formatChat: Boolean = false,
+        nLen: Int = 256,
     ): Flow<String> =
         flow {
             when (val state = threadLocalState.get()) {
                 is State.Loaded -> {
-                    val ncur = IntVar(completion_init(state.context, state.batch, message, formatChat, nlen))
-                    while (ncur.value <= nlen) {
-                        val str = completion_loop(state.context, state.batch, state.sampler, nlen, ncur)
+                    val ncur = IntVar(completion_init(state.context, state.batch, message, formatChat, nLen))
+                    while (ncur.value <= nLen) {
+                        val str = completion_loop(state.context, state.batch, state.sampler, nLen, ncur)
                         if (str == null) {
                             break
                         }

@@ -269,7 +269,7 @@ class ModelRepositoryImpl(
                 var accumulatedResponse = ""
                 var lastCleanLength = 0
 
-                llamaAndroid.send(prompt, false).collect { token ->
+                llamaAndroid.send(prompt, false, nLen = 256).collect { token ->
                     accumulatedResponse += token
                     Log.d(
                         TAG,

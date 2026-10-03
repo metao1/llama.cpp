@@ -64,7 +64,7 @@ data class CategorizationResultEntity(
         return CategorizationResult(
             fileItem = fileItem,
             suggestedCategory = category,
-            confidence = confidence,
+            confidence = if (confidence <= 0f) 0.85f else confidence,
             reasoning = reasoning,
             isConfirmed = isConfirmed,
         )

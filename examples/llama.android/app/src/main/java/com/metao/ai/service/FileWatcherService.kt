@@ -167,33 +167,50 @@ class FileProcessingService : Service() {
     ): Int {
         Log.d(TAG, "FileProcessingService started with action: ${intent?.action}")
 
-        when (intent?.action) {
-            ACTION_START_MONITORING -> {
-                val directories = intent.getStringArrayListExtra(EXTRA_DIRECTORIES) ?: emptyList()
-                startMonitoringInternal(directories)
-            }
-            ACTION_STOP_MONITORING -> {
-                stopMonitoringInternal()
-            }
-            ACTION_SCAN_DIRECTORY -> {
-                val directoryPath = intent.getStringExtra(EXTRA_DIRECTORY_PATH)
-                val includeSubdirectories = intent.getBooleanExtra(EXTRA_INCLUDE_SUBDIRECTORIES, false)
-                val sessionId = intent.getStringExtra(EXTRA_SESSION_ID)
-                if (directoryPath != null) {
-                    scanDirectoryInternal(directoryPath, includeSubdirectories, sessionId)
+        // MUST call startForeground synchronously to satisfy Android foreground service requirements
+        try {
+            when (intent?.action) {
+                ACTION_START_MONITORING -> {
+                    startForeground(NOTIFICATION_ID, createNotification("Monitoring file changes..."))
+                    val directories = intent.getStringArrayListExtra(EXTRA_DIRECTORIES) ?: emptyList()
+                    startMonitoringInternal(directories)
+                }
+                ACTION_STOP_MONITORING -> {
+                    stopMonitoringInternal()
+                }
+                ACTION_SCAN_DIRECTORY -> {
+                    val directoryPath = intent.getStringExtra(EXTRA_DIRECTORY_PATH)
+                    startForeground(NOTIFICATION_ID, createNotification("Scanning directory: ${directoryPath ?: ""}"))
+                    val includeSubdirectories = intent.getBooleanExtra(EXTRA_INCLUDE_SUBDIRECTORIES, false)
+                    val sessionId = intent.getStringExtra(EXTRA_SESSION_ID)
+                    if (directoryPath != null) {
+                        scanDirectoryInternal(directoryPath, includeSubdirectories, sessionId)
+                    }
+                }
+                ACTION_CATEGORIZE_FILES -> {
+                    startForeground(NOTIFICATION_ID, createNotification("Categorizing files..."))
+                    val filePaths = intent.getStringArrayListExtra(EXTRA_FILE_PATHS) ?: emptyList()
+                    val sessionId = intent.getStringExtra(EXTRA_SESSION_ID)
+                    categorizeFilesInternal(filePaths, sessionId)
+                }
+                else -> {
+                    startForeground(NOTIFICATION_ID, createNotification("File Processing Service active"))
+                    Log.w(TAG, "Unknown action: ${intent?.action}")
                 }
             }
-            ACTION_CATEGORIZE_FILES -> {
-                val filePaths = intent.getStringArrayListExtra(EXTRA_FILE_PATHS) ?: emptyList()
-                val sessionId = intent.getStringExtra(EXTRA_SESSION_ID)
-                categorizeFilesInternal(filePaths, sessionId)
-            }
-            else -> {
-                Log.w(TAG, "Unknown action: ${intent?.action}")
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onStartCommand startForeground", e)
         }
 
-        return START_STICKY // Restart if killed
+        return START_NOT_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d(TAG, "Task removed (app swiped away), stopping background service and cleaning up")
+        stopMonitoringInternal()
+        serviceScope.cancel()
+        stopSelf()
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
@@ -207,8 +224,6 @@ class FileProcessingService : Service() {
 
     private fun startMonitoringInternal(directories: List<String>) {
         Log.d(TAG, "Starting file monitoring for ${directories.size} directories")
-
-        startForeground(NOTIFICATION_ID, createNotification("Monitoring file changes..."))
 
         batteryOptimizedWatcher =
             BatteryOptimizedFileWatcher(this) { newFiles ->
@@ -240,8 +255,6 @@ class FileProcessingService : Service() {
 
         serviceScope.launch {
             try {
-                startForeground(NOTIFICATION_ID, createNotification("Scanning directory: $directoryPath"))
-
                 Log.d(TAG, "Starting directory scan for: $directoryPath")
                 processingCallback?.onScanProgress(0, -1) // Unknown total
 

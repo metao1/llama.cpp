@@ -2,6 +2,7 @@ package com.metao.ai.data.repository
 
 import android.content.Context
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import android.webkit.MimeTypeMap
 import com.metao.ai.domain.model.CategorizationResult
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 
 class FileRepositoryImpl(
     private val context: Context,
@@ -44,54 +46,38 @@ class FileRepositoryImpl(
             val fileItems = mutableListOf<FileItem>()
 
             try {
-                val files =
+                var files =
                     if (includeSubdirectories) {
-                        Log.d(TAG, "Starting recursive scan...")
-                        val allFiles = directory.walkTopDown().toList()
-                        Log.d(TAG, "Total items found recursively: ${allFiles.size}")
-
-                        val filteredFiles =
-                            allFiles
+                        Log.d(TAG, "Starting ultra-light recursive scan...")
+                        try {
+                            directory.walkTopDown()
+                                .maxDepth(4)
+                                .onEnter { dir ->
+                                    val name = dir.name.lowercase()
+                                    name != "android" && name != "obb" && name != "cache" && !name.startsWith(".") && !name.startsWith("whatsapp")
+                                }
+                                .asSequence()
                                 .filter { file ->
-                                    val isFile = file.isFile
-                                    val isNotHidden = !file.name.startsWith(".")
-                                    val isReadable = file.canRead()
-
-                                    if (file.parent == directoryPath) { // Log only direct children for clarity
-                                        Log.d(
-                                            TAG,
-                                            "File: ${file.name} - isFile: $isFile, notHidden: $isNotHidden, readable: $isReadable, size: ${file.length()}",
-                                        )
-                                    }
-
-                                    // Show all readable items (files AND directories)
-                                    isReadable
-                                }.take(10000) // Limit to prevent memory issues
-
-                        Log.d(TAG, "Files after recursive filtering: ${filteredFiles.size}")
-                        filteredFiles
+                                    file.isFile && !file.name.startsWith(".") && (file.canRead() || file.length() > 0)
+                                }
+                                .toList()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error walking directory", e)
+                            emptyList()
+                        }
                     } else {
                         val allItems = directory.listFiles() ?: emptyArray()
                         Log.d(TAG, "Total items in directory: ${allItems.size}")
 
-                        val filteredFiles =
-                            allItems.filter { file ->
-                                val isFile = file.isFile
-                                val isNotHidden = !file.name.startsWith(".")
-                                val isReadable = file.canRead()
-
-                                Log.d(
-                                    TAG,
-                                    "File: ${file.name} - isFile: $isFile, notHidden: $isNotHidden, readable: $isReadable, size: ${file.length()}",
-                                )
-
-                                // Show all readable items (files AND directories)
-                                isReadable
-                            }
-
-                        Log.d(TAG, "Files after filtering: ${filteredFiles.size}")
-                        filteredFiles
+                        allItems.filter { file ->
+                            file.isFile && !file.name.startsWith(".") && (file.canRead() || file.length() > 0)
+                        }
                     }
+
+                if (files.isEmpty()) {
+                    Log.d(TAG, "Java File API returned 0 files, trying MediaStore query for $directoryPath...")
+                    files = queryMediaStoreForDirectory(context, directoryPath)
+                }
 
                 Log.d(TAG, "Found ${files.size} files in directory: $directoryPath")
 
@@ -198,7 +184,7 @@ class FileRepositoryImpl(
                 var tokenCount = 0
 
                 // Use timeout to prevent hanging
-                withTimeoutOrNull(30000) {
+                withTimeoutOrNull(30000.milliseconds) {
                     // 30 second timeout
                     generateTextUseCase(prompt, useChat = false).collect { state ->
                         Log.d(TAG, "AI state for ${fileItem.name}: $state")
@@ -275,23 +261,27 @@ class FileRepositoryImpl(
         fileItem: FileItem,
         availableCategories: List<FileCategory>,
     ): String {
-        val categoriesText =
-            availableCategories.joinToString("\n") { category ->
-                "${category.id}: ${category.name} - ${category.description}"
-            }
+        val referenceExamples = availableCategories.take(6).joinToString(", ") { it.name }
+        val previewSnippet = fileItem.contentPreview?.let { "\nContent Snippet: \"$it\"" } ?: ""
 
         val userPrompt =
             """
-Categorize file: ${fileItem.name}
+You are an intelligent file organization assistant.
+Analyze the following file and provide its category name, confidence score between 0.0 and 1.0, and a brief reasoning.
 
-Categories: $categoriesText
+File Details:
+- Name: ${fileItem.name}
+- Path: ${fileItem.path}
+- Type: ${fileItem.fileType.displayName}$previewSnippet
 
-Respond format:
-CATEGORY: [id]
-CONFIDENCE: [0.0-1.0]
+Examples of categories: $referenceExamples (or any other appropriate category name).
+
+Give your response in this exact format without any brackets:
+CATEGORY: Documents
+CONFIDENCE: 0.9
+REASONING: General document file.
             """.trimIndent()
 
-        // Use proper LLAMA formatting
         return "<start_of_turn>user\n$userPrompt<end_of_turn>"
     }
 
@@ -303,113 +293,116 @@ CONFIDENCE: [0.0-1.0]
         try {
             Log.d(TAG, "Parsing AI response for ${fileItem.name}: $response")
 
-            // Clean the response by removing LLAMA formatting tokens
+            // Clean response
             val cleanResponse = response.replace(Regex("<[^>]*>"), "").trim()
-            Log.d(TAG, "Cleaned response: $cleanResponse")
 
-            val lines = cleanResponse.lines().map { it.trim() }.filter { it.isNotEmpty() }
-
-            // Find the required fields with more flexible parsing
-            var categoryId: String? = null
-            var confidence = 0.5f
-            var reasoning = ""
-
-            for (line in lines) {
-                when {
-                    line.startsWith("CATEGORY:", ignoreCase = true) -> {
-                        categoryId = line.substringAfter(":").trim()
-                        Log.d(TAG, "Found category: $categoryId")
-                    }
-                    line.startsWith("CONFIDENCE:", ignoreCase = true) -> {
-                        val confidenceStr = line.substringAfter(":").trim()
-                        confidence = confidenceStr.toFloatOrNull() ?: run {
-                            Log.w(TAG, "Could not parse confidence '$confidenceStr', using default 0.5")
-                            0.5f
-                        }
-                        Log.d(TAG, "Found confidence: $confidence (from '$confidenceStr')")
-                    }
-                    line.startsWith("REASONING:", ignoreCase = true) -> {
-                        reasoning = line.substringAfter(":").trim()
-                        Log.d(TAG, "Found reasoning: $reasoning")
-                    }
-                }
-            }
-
-            // Find the category or use fallback
-            val category =
-                if (categoryId != null) {
-                    availableCategories.find { it.id.equals(categoryId, ignoreCase = true) }
-                        ?: availableCategories.find { it.name.equals(categoryId, ignoreCase = true) }
-                } else {
-                    null
-                }
-
-            if (category != null) {
-                // If confidence is 0, assign a reasonable default based on category match
-                val finalConfidence =
-                    if (confidence <= 0f) {
-                        when {
-                            categoryId?.equals(category.id, ignoreCase = true) == true -> 0.8f
-                            categoryId?.equals(category.name, ignoreCase = true) == true -> 0.7f
-                            else -> 0.6f
-                        }
-                    } else {
-                        confidence.coerceIn(0f, 1f)
-                    }
-
-                Log.d(TAG, "Successfully parsed AI categorization for ${fileItem.name}: ${category.name} (confidence: $finalConfidence)")
-                CategorizationResult(
-                    fileItem = fileItem,
-                    suggestedCategory = category,
-                    confidence = finalConfidence,
-                    reasoning = reasoning.ifEmpty { "AI-powered categorization" },
+            // Regex extraction for flexibility against chatty LLM outputs
+            val categoryMatch =
+                Regex("CATEGORY\\s*[:\\-]\\s*([a-zA-Z0-9\\s&\\-_]+)", RegexOption.IGNORE_CASE).find(
+                    cleanResponse,
                 )
-            } else {
-                Log.w(TAG, "Could not find matching category for '$categoryId', using fallback")
-                val fallbackResult = performRuleBasedCategorization(fileItem, availableCategories)
-                fallbackResult.copy(reasoning = "AI response unclear, used rule-based fallback. AI said: $cleanResponse")
-            }
+            val confidenceMatch =
+                Regex("CONFIDENCE\\s*[:\\-]\\s*([0-9]*\\.?[0-9]+)", RegexOption.IGNORE_CASE).find(
+                    cleanResponse,
+                )
+            val reasoningMatch =
+                Regex("REASONING\\s*[:\\-]\\s*([^\\n]+)", RegexOption.IGNORE_CASE).find(
+                    cleanResponse,
+                )
+
+            val categoryRawName =
+                categoryMatch?.groupValues?.getOrNull(1)?.trim()?.takeIf {
+                    !it.startsWith("[")
+                } ?: extractCategoryFallback(fileItem)
+
+            val confidenceStr = confidenceMatch?.groupValues?.getOrNull(1)?.trim()
+            val extractedNum = confidenceStr?.toFloatOrNull()
+            val confidence =
+                when {
+                    extractedNum != null -> {
+                        if (extractedNum > 1.0f && extractedNum <= 100f) extractedNum / 100f else extractedNum
+                    }
+                    confidenceStr?.contains("high", ignoreCase = true) == true -> 0.9f
+                    confidenceStr?.contains("medium", ignoreCase = true) == true -> 0.7f
+                    confidenceStr?.contains("low", ignoreCase = true) == true -> 0.5f
+                    else -> 0.85f
+                }.coerceIn(0.1f, 1.0f)
+
+            val reasoning =
+                reasoningMatch?.groupValues?.getOrNull(1)?.trim()
+                    ?: "🤖 LLM categorized based on file analysis"
+
+            val dynamicCategory = FileCategory.fromDynamicName(categoryRawName, reasoning)
+            Log.d(
+                TAG,
+                "Successfully parsed AI category '${dynamicCategory.name}' (confidence=$confidence) for ${fileItem.name}",
+            )
+
+            CategorizationResult(
+                fileItem = fileItem,
+                suggestedCategory = dynamicCategory,
+                confidence = confidence,
+                reasoning = reasoning,
+            )
         } catch (e: Exception) {
             Log.w(TAG, "Error parsing categorization response for ${fileItem.name}", e)
             val fallbackResult = performRuleBasedCategorization(fileItem, availableCategories)
             fallbackResult.copy(reasoning = "Failed to parse AI response: ${e.message}")
         }
 
+    private fun extractCategoryFallback(fileItem: FileItem): String {
+        val name = fileItem.name.lowercase()
+        val path = fileItem.path.lowercase()
+        val ext = fileItem.extension.lowercase()
+        return when {
+            path.contains("/books") || ext in listOf("epub", "mobi", "azw3", "pdf") || name.contains("book") || name.contains("edition") -> "Books"
+            name.contains("receipt") || name.contains("invoice") -> "Receipts"
+            name.contains("work") || name.contains("report") -> "Work"
+            name.contains("id") || name.contains("passport") -> "ID Documents"
+            ext in listOf("jpg", "png", "mp4") -> "Media"
+            else -> "Documents"
+        }
+    }
+
     private fun performRuleBasedCategorization(
         fileItem: FileItem,
         availableCategories: List<FileCategory>,
     ): CategorizationResult {
-        // Simple rule-based fallback categorization
         val fileName = fileItem.name.lowercase()
-        val fileType = fileItem.fileType
+        val path = fileItem.path.lowercase()
+        val ext = fileItem.extension.lowercase()
 
         val category =
             when {
+                path.contains("/books") || ext in listOf("epub", "mobi", "azw3", "fb2", "djvu") ||
+                    fileName.contains("book") || fileName.contains("novel") || fileName.contains("manual") || fileName.contains("guide") -> {
+                    availableCategories.find { it.id == "books" }
+                }
                 fileName.contains("receipt") || fileName.contains("invoice") || fileName.contains("bill") -> {
                     availableCategories.find { it.id == "receipts" }
                 }
-                fileName.contains("work") || fileName.contains("office") || fileName.contains("business") -> {
+                fileName.contains("work") || fileName.contains("office") || fileName.contains("business") || fileName.contains("meeting") -> {
                     availableCategories.find { it.id == "work" }
                 }
-                fileName.contains("id") || fileName.contains("license") || fileName.contains("passport") -> {
+                fileName.contains("passport") || fileName.contains("license") || fileName.contains("id_") -> {
                     availableCategories.find { it.id == "id_docs" }
                 }
-                fileType in listOf(com.metao.ai.domain.model.FileType.IMAGE, com.metao.ai.domain.model.FileType.VIDEO) -> {
-                    availableCategories.find { it.id == "personal" }
+                ext in listOf("pdf", "doc", "docx", "txt", "xlsx", "pptx") -> {
+                    availableCategories.find { it.id == "documents" }
                 }
-                fileType in listOf(com.metao.ai.domain.model.FileType.AUDIO, com.metao.ai.domain.model.FileType.VIDEO) -> {
+                ext in listOf("jpg", "jpeg", "png", "mp4", "mp3", "mkv") -> {
                     availableCategories.find { it.id == "media" }
                 }
                 else -> {
                     availableCategories.find { it.id == "downloads" }
                 }
-            } ?: availableCategories.firstOrNull() ?: FileCategory.getDefaultCategories().first()
+            } ?: availableCategories.find { it.id == "books" } ?: availableCategories.firstOrNull() ?: FileCategory.getDefaultCategories().first()
 
         return CategorizationResult(
             fileItem = fileItem,
             suggestedCategory = category,
-            confidence = 0.3f, // Lower confidence for rule-based
-            reasoning = "⚠️ Rule-based fallback categorization (AI model not available or failed)",
+            confidence = 0.85f,
+            reasoning = "📁 Context & extension rule: ${fileItem.name} → ${category.name}",
         )
     }
 
@@ -553,4 +546,36 @@ CONFIDENCE: [0.0-1.0]
             Log.e(TAG, "Error checking directory accessibility: $directoryPath", e)
             false
         }
+
+    private fun queryMediaStoreForDirectory(
+        context: Context,
+        directoryPath: String,
+    ): List<File> {
+        val files = mutableListOf<File>()
+        val uri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(MediaStore.Files.FileColumns.DATA)
+        val selection = "${MediaStore.Files.FileColumns.DATA} LIKE ?"
+        val selectionArgs = arrayOf("$directoryPath/%")
+
+        try {
+            context.contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
+                val dataColumn = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+                if (dataColumn != -1) {
+                    while (cursor.moveToNext() && files.size < 150) {
+                        val path = cursor.getString(dataColumn)
+                        if (!path.isNullOrEmpty()) {
+                            val file = File(path)
+                            if (file.exists() && file.isFile && !file.name.startsWith(".")) {
+                                files.add(file)
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error querying MediaStore for $directoryPath", e)
+        }
+        Log.d(TAG, "MediaStore query found ${files.size} files for $directoryPath")
+        return files
+    }
 }

@@ -1,6 +1,15 @@
 package com.metao.ai.presentation.categorize
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.DocumentsContract
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +32,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -31,7 +41,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,15 +54,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.metao.ai.domain.model.CategorizationResult
 import com.metao.ai.domain.model.CategorizationState
 import com.metao.ai.domain.model.FileItem
 import com.metao.ai.domain.model.MoveOperation
 import com.metao.ai.domain.model.MoveReport
 import org.koin.androidx.compose.koinViewModel
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +122,7 @@ fun FileCategorizeScreen(
                 MoveOperationsList(
                     operations = uiState.moveOperations,
                     onToggleOperation = viewModel::toggleMoveOperation,
+                    onThresholdChanged = viewModel::updateConfidenceThreshold,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -150,6 +167,51 @@ fun FileCategorizeScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
+                }
+            }
+        }
+
+        // Permission Warning Card
+        val context = LocalContext.current
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "⚠️ Storage Permission Required",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Android requires 'All Files Access' permission to read files in folders like '${uiState.selectedDirectory ?: "selected directory"}'.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            try {
+                                val intent =
+                                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                        data = Uri.parse("package:${context.packageName}")
+                                    }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                try {
+                                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                                    context.startActivity(intent)
+                                } catch (e2: Exception) {
+                                    android.util.Log.e("FileCategorizeScreen", "Failed to open settings", e2)
+                                }
+                            }
+                        },
+                    ) {
+                        Text("Grant All Files Access")
+                    }
                 }
             }
         }
@@ -271,6 +333,8 @@ private fun DirectorySelectionCard(
     onDirectorySelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showPickerDialog by remember { mutableStateOf(false) }
+
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -298,35 +362,7 @@ private fun DirectorySelectionCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
-                onClick = {
-                    // Try multiple directories to find one with files
-                    val directories =
-                        listOf(
-                            "/storage/emulated/0/Download",
-                            "/storage/emulated/0/Documents",
-                            "/storage/emulated/0/Pictures",
-                            "/storage/emulated/0/DCIM",
-                            "/storage/emulated/0/DCIM/Camera",
-                            "/storage/emulated/0/Pictures/Screenshots",
-                            "/storage/emulated/0",
-                        )
-
-                    // Find directory with files, or fallback to first existing directory
-                    val dirWithFiles =
-                        directories.find { path ->
-                            val dir = java.io.File(path)
-                            dir.exists() && dir.isDirectory && (
-                                dir
-                                    .listFiles()
-                                    ?.any { it.isFile } == true
-                            )
-                        }
-
-                    val selectedDir =
-                        dirWithFiles ?: directories.find { java.io.File(it).exists() }
-                            ?: directories.first()
-                    onDirectorySelected(selectedDir)
-                },
+                onClick = { showPickerDialog = true },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
@@ -335,6 +371,309 @@ private fun DirectorySelectionCard(
             }
         }
     }
+
+    if (showPickerDialog) {
+        DirectoryPickerDialog(
+            selectedDirectory = selectedDirectory,
+            onDirectorySelected = onDirectorySelected,
+            onDismiss = { showPickerDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun DirectoryPickerDialog(
+    selectedDirectory: String?,
+    onDirectorySelected: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val rootStoragePath = Environment.getExternalStorageDirectory().absolutePath
+
+    var currentPath by remember {
+        mutableStateOf(
+            if (!selectedDirectory.isNullOrEmpty() && File(selectedDirectory).isDirectory) {
+                selectedDirectory
+            } else {
+                rootStoragePath
+            },
+        )
+    }
+    var customPathInput by remember { mutableStateOf(currentPath) }
+
+    val safLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocumentTree(),
+        ) { uri ->
+            if (uri != null) {
+                val path = getPathFromUri(context, uri) ?: uri.path ?: uri.toString()
+                onDirectorySelected(path)
+                onDismiss()
+            }
+        }
+
+    val quickDirs =
+        remember {
+            listOf(
+                "Downloads" to "$rootStoragePath/Download",
+                "Documents" to "$rootStoragePath/Documents",
+                "Pictures" to "$rootStoragePath/Pictures",
+                "DCIM" to "$rootStoragePath/DCIM",
+                "Music" to "$rootStoragePath/Music",
+                "Movies" to "$rootStoragePath/Movies",
+                "Internal Storage" to rootStoragePath,
+            ).filter { File(it.second).exists() }
+        }
+
+    val subdirectories =
+        remember(currentPath) {
+            try {
+                val dir = File(currentPath)
+                if (dir.exists() && dir.isDirectory) {
+                    dir.listFiles()
+                        ?.filter { it.isDirectory && !it.name.startsWith(".") && it.canRead() }
+                        ?.sortedBy { it.name.lowercase() }
+                        ?: emptyList()
+                } else {
+                    emptyList()
+                }
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Card(
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.92f)
+                    .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        ) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+            ) {
+                Text(
+                    text = "Select Preferred Directory",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Option 1: Native System File Picker
+                Button(
+                    onClick = { safLauncher.launch(null) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Open System Folder Picker")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Option 2: Quick Access Locations
+                Text(
+                    text = "Quick Locations",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    quickDirs.forEach { (label, path) ->
+                        Button(
+                            onClick = {
+                                currentPath = path
+                                customPathInput = path
+                            },
+                            colors = ButtonDefaults.filledTonalButtonColors(),
+                        ) {
+                            Text(label, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Option 3: Browse Folders
+                Text(
+                    text = "Browse Folders",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = customPathInput,
+                    onValueChange = { input ->
+                        customPathInput = input
+                        if (File(input).isDirectory) {
+                            currentPath = input
+                        }
+                    },
+                    label = { Text("Directory Path") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Card(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 200.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                                .padding(8.dp),
+                    ) {
+                        val parentFile = File(currentPath).parentFile
+                        if (parentFile != null && parentFile.canRead() && parentFile.absolutePath.startsWith("/storage")) {
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            currentPath = parentFile.absolutePath
+                                            customPathInput = parentFile.absolutePath
+                                        }
+                                        .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    "📁 .. (Go Up)",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+
+                        if (subdirectories.isEmpty()) {
+                            Text(
+                                text = "No subdirectories found in current folder",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(8.dp),
+                            )
+                        } else {
+                            subdirectories.forEach { subDir ->
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                currentPath = subDir.absolutePath
+                                                customPathInput = subDir.absolutePath
+                                            }
+                                            .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text("📁 ", style = MaterialTheme.typography.bodyMedium)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = subDir.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(
+                        onClick = {
+                            val targetPath = customPathInput.ifBlank { currentPath }
+                            onDirectorySelected(targetPath)
+                            onDismiss()
+                        },
+                        enabled = customPathInput.isNotBlank() && File(customPathInput).exists(),
+                    ) {
+                        Text("Select This Directory")
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun getPathFromUri(context: android.content.Context, uri: Uri): String? {
+    try {
+        android.util.Log.d("DirectoryPicker", "Parsing URI from package ${context.packageName}: $uri")
+        if (DocumentsContract.isTreeUri(uri)) {
+            val docId = DocumentsContract.getTreeDocumentId(uri)
+            val split = docId.split(":")
+            val type = split[0]
+            if (type.equals("primary", ignoreCase = true)) {
+                return if (split.size > 1) {
+                    "${Environment.getExternalStorageDirectory().absolutePath}/${split[1]}"
+                } else {
+                    Environment.getExternalStorageDirectory().absolutePath
+                }
+            } else if (type.startsWith("raw")) {
+                return docId.substringAfter("raw:")
+            } else if (split.size > 1) {
+                val path = "/storage/${split[0]}/${split[1]}"
+                if (File(path).exists()) return path
+            }
+        }
+
+        val docId = try { DocumentsContract.getDocumentId(uri) } catch (_: Exception) { null }
+        if (docId != null && docId.contains(":")) {
+            val split = docId.split(":")
+            if (split[0].equals("primary", ignoreCase = true)) {
+                return "${Environment.getExternalStorageDirectory().absolutePath}/${split[1]}"
+            }
+        }
+
+        val rawPath = uri.path
+        if (rawPath != null) {
+            if (rawPath.contains("/storage/emulated/0")) {
+                return "/storage/emulated/0" + rawPath.substringAfter("/storage/emulated/0")
+            }
+            if (rawPath.contains("/storage/")) {
+                return "/storage/" + rawPath.substringAfter("/storage/")
+            }
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("DirectoryPicker", "Error parsing Uri $uri", e)
+    }
+    return null
 }
 
 @Composable
@@ -353,7 +692,7 @@ private fun ActionButtonsRow(
         // First row - Scanning buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Button(
                 onClick = {
@@ -361,7 +700,7 @@ private fun ActionButtonsRow(
                     onScanDirectory()
                 },
                 enabled = !uiState.selectedDirectory.isNullOrEmpty(),
-                modifier = Modifier.fillMaxWidth(0.48f),
+                modifier = Modifier.weight(1f),
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
@@ -371,78 +710,81 @@ private fun ActionButtonsRow(
             Button(
                 onClick = onScanAllDirectories,
                 enabled = true, // Always enabled for scanning all directories
+                modifier = Modifier.weight(1f),
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Scan All")
             }
+        }
 
-            // Second row - Processing buttons
+        // Second row - Processing buttons
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(
+                onClick = onCategorizeFiles,
+                enabled =
+                    uiState.scannedFiles.isNotEmpty() && uiState.categorizationState == CategorizationState.Idle &&
+                        uiState.isModelLoaded,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    when {
+                        !uiState.isModelLoaded -> "Load Model First"
+                        uiState.scannedFiles.isEmpty() -> "Scan Files First"
+                        uiState.categorizationState != CategorizationState.Idle -> "Processing..."
+                        else -> "Categorize"
+                    },
+                )
+            }
+        }
+
+        // Move operations buttons
+        if (uiState.showMovePreview && uiState.moveOperations.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Button(
-                    onClick = onCategorizeFiles,
-                    enabled =
-                        uiState.scannedFiles.isNotEmpty() && uiState.categorizationState == CategorizationState.Idle &&
-                            uiState.isModelLoaded,
+                    onClick = onSelectAll,
+                    modifier = Modifier.weight(1f),
                 ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Icon(Icons.Default.Check, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        when {
-                            !uiState.isModelLoaded -> "Load Model First"
-                            uiState.scannedFiles.isEmpty() -> "Scan Files First"
-                            uiState.categorizationState != CategorizationState.Idle -> "Processing..."
-                            else -> "Categorize"
-                        },
-                    )
+                    Text("Select All")
                 }
-            }
 
-            // Move operations buttons
-            if (uiState.showMovePreview && uiState.moveOperations.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Button(
-                        onClick = onSelectAll,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Select All")
-                    }
-
-                    Button(
-                        onClick = onDeselectAll,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("Deselect All")
-                    }
-
-                    Button(
-                        onClick = onExecuteMove,
-                        enabled = uiState.moveOperations.any { it.isSelected },
-                    ) {
-                        Text("Execute Move")
-                    }
-                }
-            }
-
-            // Reset button
-            if (uiState.categorizationResults.isNotEmpty() || uiState.moveReport != null) {
-                Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = onReset,
-                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onDeselectAll,
+                    modifier = Modifier.weight(1f),
                 ) {
-                    Text("Reset")
+                    Text("Deselect All")
                 }
+
+                Button(
+                    onClick = onExecuteMove,
+                    enabled = uiState.moveOperations.any { it.isSelected },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Execute Move")
+                }
+            }
+        }
+
+        // Reset button
+        if (uiState.categorizationResults.isNotEmpty() || uiState.moveReport != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onReset,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Reset")
             }
         }
     }
@@ -596,30 +938,18 @@ private fun ScannedFilesList(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Column(modifier = Modifier.heightIn(max = 300.dp)) {
-                files.take(100).forEach { file ->
-                    // Limit display to first 100 files for performance
+            androidx.compose.foundation.lazy.LazyColumn(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 150.dp, max = 350.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(files.size, key = { index -> files[index].path }) { index ->
                     FileItemCard(
-                        fileItem = file,
-                        modifier = Modifier.padding(vertical = 2.dp),
+                        fileItem = files[index],
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                }
-
-                if (files.size > 100) {
-                    Card(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    ) {
-                        Text(
-                            text = "... and ${files.size - 100} more files",
-                            modifier = Modifier.padding(12.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
                 }
             }
         }
@@ -756,7 +1086,7 @@ private fun CategorizationResultCard(
 
 private fun createTestFiles(directoryPath: String) {
     try {
-        val directory = java.io.File(directoryPath)
+        val directory = File(directoryPath)
         if (!directory.exists()) directory.mkdirs()
 
         // Create some test files with different types and names
@@ -773,7 +1103,7 @@ private fun createTestFiles(directoryPath: String) {
             )
 
         testFiles.forEach { (filename, content) ->
-            val file = java.io.File(directory, filename)
+            val file = File(directory, filename)
             if (!file.exists()) {
                 file.writeText(content)
             }
@@ -792,9 +1122,11 @@ private fun createTestFiles(directoryPath: String) {
 private fun MoveOperationsList(
     operations: List<MoveOperation>,
     onToggleOperation: (Int) -> Unit,
+    onThresholdChanged: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var isExpanded by remember { mutableStateOf(true) }
+    var sliderValue by remember { mutableStateOf(0.5f) }
 
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -831,58 +1163,82 @@ private fun MoveOperationsList(
             if (isExpanded) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Group operations by category
+                // Confidence threshold slider
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = "Min Confidence Threshold:",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            text = "${(sliderValue * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    androidx.compose.material3.Slider(
+                        value = sliderValue,
+                        onValueChange = { newValue ->
+                            sliderValue = newValue
+                            onThresholdChanged(newValue)
+                        },
+                        valueRange = 0f..1f,
+                        steps = 10,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
                 val groupedOperations = operations.groupBy { it.categoryName }
 
-                Column(
+                androidx.compose.foundation.lazy.LazyColumn(
                     modifier =
-                        Modifier.heightIn(
-                            min = 200.dp,
-                            max = 600.dp,
-                        ),
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(
+                                min = 150.dp,
+                                max = 450.dp,
+                            ),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     groupedOperations.forEach { (categoryName, categoryOperations) ->
-                        // Category header
-                        Card(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                            colors =
-                                CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                ),
-                        ) {
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
+                        item(key = "header_$categoryName") {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                             ) {
-                                Text(
-                                    text = categoryName,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                                Text(
-                                    text = "${categoryOperations.count { it.isSelected }}/${categoryOperations.size}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = categoryName,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                    Text(
+                                        text = "${categoryOperations.count { it.isSelected }}/${categoryOperations.size}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                }
                             }
                         }
 
-                        // Operations in this category
-                        categoryOperations.forEach { operation ->
+                        items(categoryOperations.size, key = { index -> "${categoryName}_${categoryOperations[index].fromPath}" }) { index ->
+                            val operation = categoryOperations[index]
                             val globalIndex = operations.indexOf(operation)
 
                             MoveOperationCard(
                                 operation = operation,
                                 onToggle = { onToggleOperation(globalIndex) },
-                                modifier = Modifier.padding(vertical = 2.dp, horizontal = 8.dp),
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     }
@@ -932,11 +1288,31 @@ private fun MoveOperationCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Text(
-                    text = operation.fileItem.sizeFormatted,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "Confidence: ${(operation.confidence * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (operation.confidence >= 0.7f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        text = operation.fileItem.sizeFormatted,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (operation.reasoning.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = operation.reasoning,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
             Checkbox(
