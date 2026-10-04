@@ -1,5 +1,6 @@
 package com.arm.aichat
 
+import android.content.Context
 import com.arm.aichat.InferenceEngine.State
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -68,6 +69,9 @@ interface InferenceEngine {
 
     companion object {
         const val DEFAULT_PREDICT_LENGTH = 1024
+
+        fun getInstance(context: android.content.Context): InferenceEngine =
+            com.arm.aichat.internal.InferenceEngineImpl.getInstance(context)
     }
 }
 

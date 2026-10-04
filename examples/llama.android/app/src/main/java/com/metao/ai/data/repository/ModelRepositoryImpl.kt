@@ -5,7 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
-import android.llama.cpp.LLamaAndroid
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
@@ -14,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.database.getLongOrNull
 import androidx.core.net.toUri
+import com.arm.aichat.InferenceEngine
 import com.metao.ai.domain.model.DownloadState
 import com.metao.ai.domain.model.ModelInfo
 import com.metao.ai.domain.model.ModelLoadState
@@ -31,7 +31,7 @@ import java.io.File
 class ModelRepositoryImpl(
     private val context: Context,
     private val downloadManager: DownloadManager,
-    private val llamaAndroid: LLamaAndroid,
+    private val inferenceEngine: InferenceEngine,
     private val databaseRepository: ModelDatabaseRepository,
 ) : ModelRepository {
     companion object {
@@ -243,7 +243,7 @@ class ModelRepositoryImpl(
                     emit(ModelLoadState.Loaded)
                 } else {
                     // Real model
-                    llamaAndroid.load(modelPath)
+                    inferenceEngine.loadModel(modelPath)
                     isTestModel = false
                     isModelLoaded = true
                     emit(ModelLoadState.Loaded)
@@ -269,7 +269,7 @@ class ModelRepositoryImpl(
                 var accumulatedResponse = ""
                 var lastCleanLength = 0
 
-                llamaAndroid.send(prompt, false, nLen = 256).collect { token ->
+                inferenceEngine.sendUserPrompt(prompt, predictLength = 256).collect { token ->
                     accumulatedResponse += token
                     Log.d(
                         TAG,
@@ -299,7 +299,7 @@ class ModelRepositoryImpl(
 
     override suspend fun clearMessages() {
         // Clear conversation history if needed
-        llamaAndroid.unload()
+        inferenceEngine.cleanUp()
     }
 
     override suspend fun benchmark(
@@ -308,7 +308,7 @@ class ModelRepositoryImpl(
         nRepeat: Int,
     ): String =
         try {
-            llamaAndroid.bench(nThreads, nLayers, nRepeat)
+            inferenceEngine.bench(nThreads, 32, 1, nRepeat)
         } catch (e: Exception) {
             "Benchmark failed: ${e.message}"
         }

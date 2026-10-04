@@ -2,7 +2,8 @@ package com.metao.ai.di
 
 import android.app.DownloadManager
 import android.content.Context
-import android.llama.cpp.LLamaAndroid
+import com.arm.aichat.InferenceEngine
+import com.arm.aichat.internal.InferenceEngineImpl
 import com.metao.ai.data.database.CategorizationDatabase
 import com.metao.ai.data.database.ModelDatabase
 import com.metao.ai.data.repository.CategorizationStateRepository
@@ -43,8 +44,8 @@ val appModule =
         // Model State Manager
         single { ModelStateManager() }
 
-        single {
-            LLamaAndroid.instance()
+        single<InferenceEngine> {
+            InferenceEngineImpl.getInstance(get())
         }
 
         // Database
@@ -66,7 +67,7 @@ val appModule =
             ModelRepositoryImpl(
                 context = get(),
                 downloadManager = get(),
-                llamaAndroid = get(),
+                inferenceEngine = get(),
                 databaseRepository = get(),
             )
         }

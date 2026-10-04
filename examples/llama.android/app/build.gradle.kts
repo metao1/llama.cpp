@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.compose.compiler)
     id("com.google.devtools.ksp")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
@@ -90,7 +91,7 @@ configurations.all {
 }
 
 dependencies {
-    implementation(project(":llama"))
+    implementation(project(":lib"))
 
     val composeBom = platform("androidx.compose:compose-bom:2025.07.00")
     implementation(composeBom)

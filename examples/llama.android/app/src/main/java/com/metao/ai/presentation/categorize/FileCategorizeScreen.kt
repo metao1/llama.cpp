@@ -75,10 +75,14 @@ fun FileCategorizeScreen(
     viewModel: FileCategorizeViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var autoOpenPicker by remember { mutableStateOf(false) }
 
     // Periodically check model status
     LaunchedEffect(Unit) {
         viewModel.refreshModelStatus()
+        if (uiState.selectedDirectory == null) {
+            autoOpenPicker = true
+        }
     }
 
     Column(
@@ -100,6 +104,7 @@ fun FileCategorizeScreen(
         DirectorySelectionCard(
             selectedDirectory = uiState.selectedDirectory,
             onDirectorySelected = viewModel::selectDirectory,
+            autoOpen = autoOpenPicker && uiState.selectedDirectory == null,
             modifier = Modifier.padding(bottom = 16.dp),
         )
 
@@ -259,7 +264,7 @@ fun FileCategorizeScreen(
                     )
                 } else if (uiState.scannedFiles.isEmpty() && uiState.selectedDirectory != null) {
                     Text(
-                        "💡 Press 'Scan Current' to find files in the selected directory",
+                        "💡 Press 'Scan Current' to find files. If 0 files found on Android 11+, use 'Select Directory' above to pick the folder via System Folder Picker.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -331,9 +336,10 @@ fun FileCategorizeScreen(
 private fun DirectorySelectionCard(
     selectedDirectory: String?,
     onDirectorySelected: (String) -> Unit,
+    autoOpen: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    var showPickerDialog by remember { mutableStateOf(false) }
+    var showPickerDialog by remember { mutableStateOf(autoOpen) }
 
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -406,6 +412,13 @@ private fun DirectoryPickerDialog(
             contract = ActivityResultContracts.OpenDocumentTree(),
         ) { uri ->
             if (uri != null) {
+                try {
+                    val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    context.contentResolver.takePersistableUriPermission(uri, takeFlags)
+                } catch (e: Exception) {
+                    android.util.Log.e("DirectoryPicker", "Failed to take persistable URI permission", e)
+                }
                 val path = getPathFromUri(context, uri) ?: uri.path ?: uri.toString()
                 onDirectorySelected(path)
                 onDismiss()
